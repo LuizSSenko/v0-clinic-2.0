@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Spinner } from "@/components/ui/spinner"
+import { InteractiveCalendar } from "./interactive-calendar"
 
 interface BookAppointmentDialogProps {
   open: boolean
@@ -32,6 +33,7 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
   const [clinics, setClinics] = useState<any[]>([])
   const [professionals, setProfessionals] = useState<any[]>([])
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [workingDays, setWorkingDays] = useState<string[]>([])
 
   const [selectedClinic, setSelectedClinic] = useState("")
   const [selectedProfessional, setSelectedProfessional] = useState("")
@@ -55,6 +57,14 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
   }, [selectedClinic])
 
   useEffect(() => {
+    if (selectedProfessional) {
+      loadWorkingDays(selectedProfessional)
+      setSelectedDate("") // Reset date when professional changes
+      setSelectedTime("")
+    }
+  }, [selectedProfessional])
+
+  useEffect(() => {
     if (selectedProfessional && selectedDate) {
       loadAvailableSlots(selectedProfessional, selectedDate)
     }
@@ -70,10 +80,20 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
     setProfessionals(data || [])
   }
 
+  const loadWorkingDays = async (professionalId: string) => {
+    const { data } = await supabase
+      .from("professional_availability")
+      .select("day_of_week")
+      .eq("professional_id", professionalId)
+    
+    setWorkingDays(data?.map(d => d.day_of_week) || [])
+  }
+
   const loadAvailableSlots = async (professionalId: string, date: string) => {
     setLoadingSlots(true)
     try {
-      const dayOfWeek = new Date(date).toLocaleDateString("en-US", { weekday: "lowercase" })
+      const selectedDate = new Date(date + 'T00:00:00')
+      const dayOfWeek = selectedDate.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase()
 
       // Get professional's availability for this day
       const { data: availability } = await supabase
@@ -105,12 +125,27 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
         .eq("appointment_date", date)
         .eq("status", "scheduled")
 
-      // Get blocked times for this day
-      const { data: blockedTimes } = await supabase
+      // Get blocked times for this specific date
+      const { data: specificBlockedTimes } = await supabase
         .from("blocked_times")
         .select("start_time, end_time")
         .eq("professional_id", professionalId)
+        .eq("is_recurring", false)
         .eq("date", date)
+
+      // Get recurring blocked times for this day of week
+      const { data: recurringBlockedTimes } = await supabase
+        .from("blocked_times")
+        .select("start_time, end_time")
+        .eq("professional_id", professionalId)
+        .eq("is_recurring", true)
+        .eq("day_of_week", dayOfWeek)
+
+      // Combine both types of blocked times
+      const allBlockedTimes = [
+        ...(specificBlockedTimes || []),
+        ...(recurringBlockedTimes || [])
+      ]
 
       // Generate time slots
       const slots = generateTimeSlots(
@@ -118,7 +153,7 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
         availability.end_time,
         professional.average_appointment_duration,
         existingAppointments || [],
-        blockedTimes || [],
+        allBlockedTimes,
       )
 
       setAvailableSlots(slots)
@@ -174,30 +209,88 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    console.log("=== INÍCIO DO AGENDAMENTO ===")
+    console.log("Estado atual:", {
+      selectedClinic,
+      selectedProfessional,
+      selectedDate,
+      selectedTime,
+      notes
+    })
+
+    // Validações
+    if (!selectedClinic) {
+      alert("Por favor, selecione uma clínica")
+      return
+    }
+
+    if (!selectedProfessional) {
+      alert("Por favor, selecione um profissional")
+      return
+    }
+
+    if (!selectedDate) {
+      alert("Por favor, selecione uma data")
+      return
+    }
+
+    if (!selectedTime) {
+      alert("Por favor, selecione um horário")
+      return
+    }
+
     setIsLoading(true)
 
     try {
+      // Validar que a data não é passada
+      const selectedDateObj = new Date(selectedDate + 'T00:00:00')
+      const todayObj = new Date()
+      todayObj.setHours(0, 0, 0, 0)
+      
+      if (selectedDateObj < todayObj) {
+        alert('Não é possível agendar consultas em datas passadas.')
+        setIsLoading(false)
+        return
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) return
 
       // Get professional info for duration
-      const { data: professional } = await supabase
+      console.log("🔍 Buscando informações do profissional:", selectedProfessional)
+      const { data: professional, error: profError } = await supabase
         .from("professionals")
         .select("average_appointment_duration")
         .eq("id", selectedProfessional)
         .single()
 
-      if (!professional) return
+      console.log("📋 Profissional carregado:", professional)
 
-      // Calculate end time
+      if (profError || !professional) {
+        console.error("❌ Erro ao buscar profissional:", profError)
+        alert("Erro ao buscar informações do profissional")
+        return
+      }
+
+      // Calculate end time - usar 30 minutos como padrão se não tiver duração
+      const duration = Number((professional as any).average_appointment_duration) || 30
+      console.log("⏱️ Duração da consulta:", duration, "minutos")
+      
       const [hours, minutes] = selectedTime.split(":").map(Number)
       const startMinutes = hours * 60 + minutes
-      const endMinutes = startMinutes + professional.average_appointment_duration
+      const endMinutes = startMinutes + duration
       const endHours = Math.floor(endMinutes / 60)
       const endMinutesSlot = endMinutes % 60
       const endTime = `${endHours.toString().padStart(2, "0")}:${endMinutesSlot.toString().padStart(2, "0")}`
+      
+      console.log("🕐 Horários calculados:", { 
+        inicio: selectedTime, 
+        fim: endTime, 
+        duracao: duration 
+      })
 
       const { data: newAppointment, error } = await supabase
         .from("appointments")
@@ -221,13 +314,38 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
         )
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error("❌ ERRO AO CRIAR AGENDAMENTO")
+        console.error("Código do erro:", error.code)
+        console.error("Mensagem:", error.message)
+        console.error("Detalhes:", error.details)
+        console.error("Dados que foram enviados:", {
+          patient_id: user.id,
+          professional_id: selectedProfessional,
+          appointment_date: selectedDate,
+          start_time: selectedTime,
+          end_time: endTime,
+          status: "scheduled",
+          notes: notes || null,
+        })
+        alert(`Erro ao criar agendamento: ${error.message}`)
+        throw error
+      }
 
+      console.log("✅ AGENDAMENTO CRIADO COM SUCESSO:", newAppointment)
       onAppointmentBooked(newAppointment)
       onOpenChange(false)
       resetForm()
+    } catch (error: any) {
+      console.error("❌ ERRO NO PROCESSO DE AGENDAMENTO:", error)
+      if (error.message) {
+        alert(`Erro: ${error.message}`)
+      } else {
+        alert("Erro ao criar agendamento. Tente novamente.")
+      }
     } finally {
       setIsLoading(false)
+      console.log("=== FIM DO AGENDAMENTO ===")
     }
   }
 
@@ -245,8 +363,10 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
   const canProceedToStep2 = selectedClinic && selectedProfessional
   const canProceedToStep3 = canProceedToStep2 && selectedDate && selectedTime
 
-  // Get minimum date (today)
-  const today = new Date().toISOString().split("T")[0]
+  // Get minimum date (today) - usando timezone local para evitar problemas
+  const today = new Date()
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset()) // Ajusta para timezone local
+  const todayStr = today.toISOString().split("T")[0]
 
   return (
     <Dialog
@@ -256,143 +376,122 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
         if (!open) resetForm()
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Agendar Consulta</DialogTitle>
-          <DialogDescription>Escolha a clínica, profissional e horário desejado</DialogDescription>
+          <DialogTitle className="text-xl font-bold">Agendar Consulta</DialogTitle>
+          <DialogDescription>
+            Selecione a clínica, profissional e horário para sua consulta
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6 py-4">
-            {/* Step 1: Select Clinic and Professional */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-                  1
-                </div>
-                <h3 className="font-semibold">Selecione a Clínica e Profissional</h3>
-              </div>
-
-              <div className="grid gap-4 pl-10">
-                <div className="grid gap-2">
-                  <Label htmlFor="clinic">Clínica</Label>
-                  <Select value={selectedClinic} onValueChange={setSelectedClinic}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Escolha uma clínica" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clinics.map((clinic) => (
-                        <SelectItem key={clinic.id} value={clinic.id}>
-                          {clinic.clinic_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedClinic && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="professional">Profissional</Label>
-                    <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Escolha um profissional" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {professionals.map((prof) => (
-                          <SelectItem key={prof.id} value={prof.id}>
-                            {prof.name} - {prof.specialty}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Step 2: Select Date and Time */}
-            {canProceedToStep2 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-                    2
-                  </div>
-                  <h3 className="font-semibold">Escolha Data e Horário</h3>
-                </div>
-
-                <div className="grid gap-4 pl-10">
-                  <div className="grid gap-2">
-                    <Label htmlFor="date">Data</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      min={today}
-                      value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value)
-                        setSelectedTime("")
-                      }}
-                      required
-                    />
-                  </div>
-
-                  {selectedDate && (
-                    <div className="grid gap-2">
-                      <Label>Horários Disponíveis</Label>
-                      {loadingSlots ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Spinner />
-                        </div>
-                      ) : availableSlots.length > 0 ? (
-                        <div className="grid grid-cols-4 gap-2">
-                          {availableSlots.map((slot) => (
-                            <Button
-                              key={slot}
-                              type="button"
-                              variant={selectedTime === slot ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setSelectedTime(slot)}
-                            >
-                              {slot}
-                            </Button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground py-4">Nenhum horário disponível para esta data</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Add Notes */}
-            {canProceedToStep3 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-                    3
-                  </div>
-                  <h3 className="font-semibold">Observações (Opcional)</h3>
-                </div>
-
-                <div className="grid gap-2 pl-10">
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Adicione informações relevantes sobre a consulta..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Seleção de Clínica */}
+          <div className="space-y-2">
+            <Label className="font-semibold">Clínica</Label>
+            <Select value={selectedClinic} onValueChange={setSelectedClinic}>
+              <SelectTrigger>
+                <SelectValue placeholder="Escolha uma clínica" />
+              </SelectTrigger>
+              <SelectContent>
+                {clinics.map((clinic) => (
+                  <SelectItem key={clinic.id} value={clinic.id}>
+                    {clinic.clinic_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <DialogFooter>
+          {/* Seleção de Profissional */}
+          {selectedClinic && (
+            <div className="space-y-2">
+              <Label className="font-semibold">Profissional</Label>
+              <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um profissional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {professionals.map((prof) => (
+                    <SelectItem key={prof.id} value={prof.id}>
+                      {prof.name} - {prof.specialty}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Calendário Mensal */}
+          {canProceedToStep2 && (
+            <div className="space-y-3">
+              <Label className="font-semibold">Selecione uma Data</Label>
+              
+              <InteractiveCalendar
+                professionalId={selectedProfessional}
+                workingDays={workingDays}
+                onDateSelect={(date) => {
+                  setSelectedDate(date)
+                  setSelectedTime("")
+                }}
+                selectedDate={selectedDate}
+                minDate={todayStr}
+              />
+
+              {/* Horários disponíveis aparecem aqui embaixo quando seleciona data */}
+              {selectedDate && (
+                <div className="space-y-2 pt-2">
+                  {loadingSlots ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner />
+                    </div>
+                  ) : availableSlots.length > 0 ? (
+                    <div className="grid grid-cols-4 gap-2">
+                      {availableSlots.map((slot) => (
+                        <Button
+                          key={slot}
+                          type="button"
+                          variant={selectedTime === slot ? "default" : "outline"}
+                          onClick={() => setSelectedTime(slot)}
+                          size="sm"
+                          className="font-medium"
+                        >
+                          {slot}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-3">
+                      Sem horários disponíveis
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Observações */}
+          {canProceedToStep3 && (
+            <div className="space-y-2">
+              <Label className="font-semibold">Observações (Opcional)</Label>
+              <Textarea
+                placeholder="Motivo da consulta..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={!canProceedToStep3 || isLoading}>
+            <Button 
+              type="submit" 
+              disabled={!canProceedToStep3 || isLoading}
+              className="bg-green-600 hover:bg-green-700"
+            >
               {isLoading ? "Agendando..." : "Confirmar Agendamento"}
             </Button>
           </DialogFooter>

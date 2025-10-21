@@ -162,23 +162,47 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
     }
   }
 
-  const handleAddBlockedTime = async (data: Partial<BlockedTime>) => {
+  const handleAddBlockedTime = async (data: Partial<BlockedTime> | Partial<BlockedTime>[]) => {
     if (!selectedProfessional) return
 
-    const { data: newBlockedTime, error } = await supabase
-      .from("blocked_times")
-      .insert({
+    // Verificar se é um array (bloqueio recorrente em múltiplos dias) ou um único bloqueio
+    if (Array.isArray(data)) {
+      // Bloqueios recorrentes (um para cada dia da semana)
+      const blockedTimesData = data.map(item => ({
         professional_id: selectedProfessional.id,
-        date: data.date!,
-        start_time: data.start_time!,
-        end_time: data.end_time!,
-        reason: data.reason,
-      })
-      .select()
-      .single()
+        is_recurring: true,
+        day_of_week: item.day_of_week,
+        start_time: item.start_time!,
+        end_time: item.end_time!,
+        reason: item.reason,
+      }))
 
-    if (!error && newBlockedTime) {
-      setBlockedTimes([newBlockedTime, ...blockedTimes])
+      const { data: newBlockedTimes, error } = await supabase
+        .from("blocked_times")
+        .insert(blockedTimesData)
+        .select()
+
+      if (!error && newBlockedTimes) {
+        setBlockedTimes([...newBlockedTimes, ...blockedTimes])
+      }
+    } else {
+      // Bloqueio pontual (data específica)
+      const { data: newBlockedTime, error } = await supabase
+        .from("blocked_times")
+        .insert({
+          professional_id: selectedProfessional.id,
+          is_recurring: false,
+          date: data.date!,
+          start_time: data.start_time!,
+          end_time: data.end_time!,
+          reason: data.reason,
+        })
+        .select()
+        .single()
+
+      if (!error && newBlockedTime) {
+        setBlockedTimes([newBlockedTime, ...blockedTimes])
+      }
     }
   }
 
@@ -416,7 +440,11 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
                         <TableBody>
                           {blockedTimes.map((blocked) => (
                             <TableRow key={blocked.id}>
-                              <TableCell>{new Date(blocked.date).toLocaleDateString("pt-BR")}</TableCell>
+                              <TableCell>
+                                {blocked.is_recurring 
+                                  ? `Todos os ${dayLabels[blocked.day_of_week!]}s`
+                                  : new Date(blocked.date!).toLocaleDateString("pt-BR")}
+                              </TableCell>
                               <TableCell>{blocked.start_time}</TableCell>
                               <TableCell>{blocked.end_time}</TableCell>
                               <TableCell>{blocked.reason || "-"}</TableCell>
@@ -464,7 +492,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
                                 </div>
                               </TableCell>
                               <TableCell>
-                                {new Date(appointment.appointment_date).toLocaleDateString("pt-BR")}
+                                {new Date(appointment.appointment_date + 'T00:00:00').toLocaleDateString("pt-BR")}
                               </TableCell>
                               <TableCell>
                                 {appointment.start_time} - {appointment.end_time}
@@ -522,6 +550,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
         onOpenChange={setBlockedTimeDialogOpen}
         onSubmit={handleAddBlockedTime}
         blockedTime={editingBlockedTime}
+        workingDays={availabilities.map(a => a.day_of_week)}
       />
 
       {selectedAppointment && (

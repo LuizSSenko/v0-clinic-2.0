@@ -44,10 +44,12 @@ export interface ProfessionalAvailability {
 export interface BlockedTime {
   id: string
   professional_id: string
-  date: string
+  date?: string // Opcional para bloqueios recorrentes
   start_time: string
   end_time: string
   reason?: string
+  is_recurring?: boolean // Se true, é um bloqueio recorrente
+  day_of_week?: DayOfWeek // Usado apenas quando is_recurring = true
   created_at: string
 }
 

@@ -45,7 +45,7 @@ export function AppointmentCard({ appointment, onCancel, onMessage, showCancel }
         </div>
         <div className="flex items-center gap-2 text-sm">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span>{new Date(appointment.appointment_date).toLocaleDateString("pt-BR")}</span>
+          <span>{new Date(appointment.appointment_date + 'T00:00:00').toLocaleDateString("pt-BR")}</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <Clock className="h-4 w-4 text-muted-foreground" />

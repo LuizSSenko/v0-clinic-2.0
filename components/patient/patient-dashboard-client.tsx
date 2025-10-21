@@ -51,11 +51,21 @@ export function PatientDashboardClient({ profile, initialAppointments }: Patient
   }
 
   const upcomingAppointments = appointments.filter(
-    (apt) => apt.status === "scheduled" && new Date(apt.appointment_date) >= new Date(),
+    (apt) => {
+      const aptDate = new Date(apt.appointment_date + 'T00:00:00')
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      return apt.status === "scheduled" && aptDate >= today
+    }
   )
 
   const pastAppointments = appointments.filter(
-    (apt) => apt.status === "completed" || new Date(apt.appointment_date) < new Date(),
+    (apt) => {
+      const aptDate = new Date(apt.appointment_date + 'T00:00:00')
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      return apt.status === "completed" || aptDate < today
+    }
   )
 
   const cancelledAppointments = appointments.filter((apt) => apt.status === "cancelled")
