@@ -53,6 +53,25 @@ Sistema completo de gerenciamento de consultas médicas com agendamento online, 
   - Visualização de consultas em abas: Próximas / Anteriores / Canceladas
   - Cancelamento de consultas com confirmação
   - Badge visual de status (Agendada/Cancelada/Confirmada/Concluída)
+  - **Botão de Mensagens**: Acesso direto ao chat com a clínica
+
+#### 💬 Sistema de Mensagens
+- **Chat com a Clínica**
+  - Comunicação direta sobre consultas agendadas
+  - Interface de chat intuitiva com bolhas de mensagem
+  - Envio instantâneo de mensagens (real-time)
+  
+- **Envio de Arquivos**
+  - Anexar documentos médicos (PDF, Word)
+  - Enviar imagens de exames (JPEG, PNG, WebP)
+  - Limite: 10MB por arquivo
+  - Preview antes de enviar
+  - Download de arquivos recebidos
+  
+- **Integração com Consultas**
+  - Cada chat vinculado a um agendamento específico
+  - Acesso via botão "Mensagens" nos detalhes da consulta
+  - Histórico completo de conversas preservado
 
 #### 📧 Notificações por Email
 Emails automáticos e responsivos em **4 situações**:
@@ -127,12 +146,51 @@ Ao clicar em um agendamento no calendário:
 
 - **Ações Disponíveis**
   - ✅ **Confirmar Consulta**: Altera status para "confirmada" + envia email
+  - 💬 **Mensagens**: Abre chat direto com o paciente
   - ♻️ **Reagendar**: Atualiza data/hora + envia email de notificação
   - ❌ **Cancelar**: Muda status para "cancelada" + envia email ao paciente
 
 - **Confirmações Customizadas**
   - Diálogos claros com botões "Não" e "Sim, [Ação]"
   - Toast notifications para feedback de sucesso/erro
+
+**Aba 3: Mensagens** 💬
+- **Sistema de Chat Completo**
+  - Interface estilo WhatsApp (lista de conversas + área de chat)
+  - Comunicação em tempo real entre clínica e pacientes
+  - Histórico de mensagens por agendamento
+  
+- **Envio de Arquivos**
+  - Anexar documentos (PDF, Word)
+  - Enviar imagens (JPEG, PNG, WebP)
+  - Limite: 10MB por arquivo
+  - Preview antes de enviar
+  - Download de arquivos recebidos
+  
+- **Filtros Avançados**
+  - Por Status da Consulta (Agendada/Confirmada/Cancelada/Concluída)
+  - Por Período de Tempo (Data Início → Data Fim)
+  - Botão "Limpar" para resetar filtros
+  - Contador dinâmico: "X de Y conversas"
+  
+- **Interface Intuitiva**
+  - Lista de conversas à esquerda com:
+    - Nome do paciente
+    - Profissional responsável
+    - Data/hora da consulta
+    - Status (badge colorido)
+    - Última mensagem (preview)
+    - Timestamp relativo (Xmin, Xh, Ontem, DD/MM)
+  - Área de chat à direita com:
+    - Mensagens em bolhas (enviadas/recebidas)
+    - Upload de arquivos via botão de clipe
+    - Campo de texto com envio por Enter
+    - Scroll automático para última mensagem
+  
+- **Real-Time**
+  - Mensagens aparecem instantaneamente
+  - Atualização automática da lista de conversas
+  - Sem necessidade de refresh
 
 #### ⚙️ Configurações da Clínica
 - **Informações de Contato**
@@ -162,6 +220,7 @@ Ao clicar em um agendamento no calendário:
 - **[Supabase](https://supabase.com/)** - Backend as a Service
   - PostgreSQL Database com Row Level Security (RLS)
   - Authentication (Email/Password)
+  - Storage (Bucket privado para anexos de mensagens)
   - Edge Functions (Deno runtime)
   - Real-time subscriptions
   
@@ -169,6 +228,12 @@ Ao clicar em um agendamento no calendário:
   - Runtime: Deno
   - Deploy: Supabase CLI
   - CORS configurado para integração com Next.js
+
+- **[Supabase Storage](https://supabase.com/docs/guides/storage)** - Armazenamento de Arquivos
+  - Bucket privado: `message-attachments`
+  - RLS policies para segurança
+  - Signed URLs com validade de 1 ano
+  - Suporte a múltiplos tipos de arquivo (PDF, Word, imagens)
 
 - **[Resend](https://resend.com/)** - Serviço de envio de emails
   - 3.000 emails gratuitos/mês
@@ -242,9 +307,16 @@ Todas as tabelas têm políticas RLS implementadas:
 3. Supabase Auth cria usuário
 4. **Trigger automático** cria registro em `profiles` e `clinics` (se for clínica)
 
+**Melhorias UX no Login:**
+- **Mensagens Progressivas**: "Autenticando..." → "Carregando perfil..." → "Redirecionando..."
+- **Spinner Animado**: Feedback visual contínuo durante todo o processo
+- **Campos Desabilitados**: Email e senha ficam inativos durante login
+- **Loading Persistente**: Botão mantém estado de loading até redirecionamento completo
+- **Tratamento de Erros**: Loading para imediatamente em caso de erro
+
 **Quando?** Primeiro acesso ao sistema
 
-**Por quê?** Separação de permissões e contextos (paciente vs clínica)
+**Por quê?** Separação de permissões e contextos (paciente vs clínica) + UX profissional
 
 ---
 
@@ -380,7 +452,94 @@ const handleConfirm = async () => {
 
 ---
 
-### 5️⃣ Sistema de Emails Automáticos
+### 5️⃣ Sistema de Mensagens (Chat com Anexos)
+
+**Onde?** 
+- `components/shared/messages-chat.tsx` (componente inline)
+- `components/shared/messages-dialog.tsx` (modal)
+- `components/clinic/messages-tab.tsx` (aba WhatsApp-style)
+
+**Como funciona?**
+
+#### Envio de Mensagens
+```typescript
+const handleSendMessage = async (e: React.FormEvent) => {
+  // 1. Upload de arquivo (se houver)
+  if (selectedFile) {
+    const fileName = `${appointmentId}/${timestamp}-${file.name}`
+    const { data } = await supabase.storage
+      .from('message-attachments')
+      .upload(fileName, file)
+    
+    fileUrl = await createSignedUrl(fileName, 31536000) // 1 ano
+  }
+  
+  // 2. Inserir mensagem no banco
+  const { data: insertedMessage } = await supabase
+    .from('messages')
+    .insert({
+      appointment_id,
+      sender_id: user.id,
+      message: text,
+      message_type: selectedFile ? 'file' : 'text',
+      file_url, file_name, file_type, file_size
+    })
+    .select()
+    .single()
+  
+  // 3. Adicionar ao estado local (aparece instantaneamente)
+  setMessages(prev => [...prev, insertedMessage])
+}
+```
+
+#### Real-Time com Supabase
+```typescript
+// Subscribe to novos mensagens
+const channel = supabase
+  .channel(`messages:${appointmentId}`)
+  .on('postgres_changes', {
+    event: 'INSERT',
+    table: 'messages',
+    filter: `appointment_id=eq.${appointmentId}`
+  }, (payload) => {
+    // Evita duplicação
+    setMessages(prev => {
+      if (prev.some(m => m.id === payload.new.id)) return prev
+      return [...prev, payload.new]
+    })
+  })
+  .subscribe()
+```
+
+#### Aba Mensagens (Clínica)
+1. **Lista de Conversas** (esquerda)
+   - Query: appointments com pelo menos 1 mensagem
+   - Ordenação: última mensagem mais recente
+   - Filtros:
+     - Status: scheduled/confirmed/cancelled/completed/all
+     - Período: data início → data fim
+   - Preview: última mensagem truncada (50 chars)
+   
+2. **Área de Chat** (direita)
+   - Renderiza `MessagesChat` inline
+   - Scroll automático para última mensagem
+   - Upload: clique no ícone de clipe
+   - Download: botão em cada arquivo
+
+#### Validações de Upload
+- **Tamanho máximo**: 10MB
+- **Tipos permitidos**: 
+  - Imagens: JPEG, PNG, WebP
+  - Documentos: PDF, Word (.doc, .docx)
+- Feedback: toast de erro se inválido
+
+**Quando?** Paciente/Clínica precisa trocar informações sobre consulta
+
+**Por quê?** Comunicação direta, anexo de documentos (receitas, exames), real-time
+
+---
+
+### 6️⃣ Sistema de Emails Automáticos
 
 **Onde?** `supabase/functions/send-appointment-email/index.ts`
 
@@ -833,6 +992,37 @@ CREATE TABLE appointments (
 );
 ```
 
+#### `messages` (Migration 018)
+```sql
+CREATE TABLE messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  message TEXT,
+  message_type TEXT DEFAULT 'text' CHECK (message_type IN ('text', 'file')),
+  file_url TEXT,              -- URL do arquivo no Supabase Storage
+  file_name TEXT,             -- Nome original do arquivo
+  file_type TEXT,             -- MIME type (image/jpeg, application/pdf, etc)
+  file_size INTEGER,          -- Tamanho em bytes
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices para performance
+CREATE INDEX idx_messages_appointment ON messages(appointment_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
+```
+
+**Storage Bucket:**
+```sql
+-- Bucket privado para anexos de mensagens
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('message-attachments', 'message-attachments', false);
+
+-- RLS Policies para controle de acesso
+-- Usuários autenticados podem upload
+-- Apenas envolvidos no agendamento podem ler/deletar
+```
+
 ### Relacionamentos
 
 ```
@@ -846,7 +1036,16 @@ professionals
   ├─ blocked_times
   └─ appointments
        ↓ many-to-one
-     profiles (user_type='patient')
+       profiles (user_type='patient')
+       ↓ one-to-many
+       messages (sender_id → profiles)
+```
+
+**Storage:**
+```
+message-attachments bucket
+  ↓ stores files
+  {appointment_id}/{timestamp}-{filename}
 ```
 
 ### Índices Importantes
@@ -859,6 +1058,10 @@ CREATE INDEX idx_appointments_patient ON appointments(patient_id);
 CREATE INDEX idx_appointments_status ON appointments(status);
 CREATE INDEX idx_availability_professional ON professional_availability(professional_id);
 CREATE INDEX idx_blocked_times_professional ON blocked_times(professional_id);
+
+-- Índices de mensagens (Migration 018)
+CREATE INDEX idx_messages_appointment ON messages(appointment_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
 ```
 
 ### Triggers
@@ -1021,28 +1224,41 @@ npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=xxx
 - [ ] Calendário exibe consultas
 - [ ] Ações (confirmar/cancelar) funcionam
 - [ ] Emails são recebidos para todas as ações
+- [ ] Sistema de mensagens funciona (envio/recebimento)
+- [ ] Upload de arquivos funciona corretamente
+- [ ] Filtros na aba Mensagens funcionam
+- [ ] Real-time atualiza mensagens instantaneamente
 
 ---
 
 ## 🗺️ Roadmap
 
+### ✅ Concluído
+- [x] **Sistema de mensagens entre paciente e clínica** (Migration 018)
+  - Chat em tempo real com Supabase Realtime
+  - Envio de arquivos (PDF, Word, imagens até 10MB)
+  - Bucket privado no Supabase Storage
+  - Filtros por status e período de tempo
+  - Interface WhatsApp-style na aba Mensagens
+  - Preview e download de arquivos
+- [x] **Melhorias UX no Login**
+  - Mensagens progressivas de loading
+  - Spinner animado
+  - Campos desabilitados durante autenticação
+  - Feedback visual aprimorado
+
 ### 🔄 Em Desenvolvimento
-- [ ] Sistema de mensagens entre paciente e clínica
 - [ ] Notificações push (browser)
 - [ ] Exportação de relatórios (PDF)
 
 ### 🎯 Próximas Features
-- [ ] Pagamento online integrado (Stripe)
 - [ ] Videochamada para teleconsultas (Twilio/WebRTC)
-- [ ] App mobile (React Native)
 - [ ] Lembretes automáticos (WhatsApp via Twilio)
 - [ ] Dashboard analítico para clínicas
 - [ ] Sistema de avaliações (paciente avalia consulta)
 - [ ] Multi-idioma (i18n)
 - [ ] Tema escuro persistente
 - [ ] Integração com calendários (Google Calendar, Outlook)
-- [ ] Upload de documentos médicos
-- [ ] Prontuário eletrônico
 
 ### 🐛 Melhorias Técnicas
 - [ ] Testes unitários (Jest + React Testing Library)
