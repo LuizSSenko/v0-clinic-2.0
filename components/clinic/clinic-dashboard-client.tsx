@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { Clinic, Professional, ProfessionalAvailability, BlockedTime } from "@/lib/types"
-import { Plus, Edit, Trash2, Calendar, Clock, LogOut, Users, MessageSquare } from "lucide-react"
+import { Plus, Edit, Trash2, Calendar, Clock, LogOut, Users, MessageSquare, CalendarDays, Settings } from "lucide-react"
 import { useState, useEffect } from "react"
 import { ProfessionalFormDialog } from "./professional-form-dialog"
 import { AvailabilityFormDialog } from "./availability-form-dialog"
@@ -14,6 +14,10 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { MessagesDialog } from "../shared/messages-dialog"
+import { WeeklyCalendar } from "./weekly-calendar"
+import { AppointmentDetailsDialog } from "./appointment-details-dialog"
+import { ClinicSettingsDialog } from "./clinic-settings-dialog"
+import { MessagesTab } from "./messages-tab"
 
 interface ClinicDashboardClientProps {
   clinic: Clinic
@@ -29,6 +33,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
   const [availabilities, setAvailabilities] = useState<ProfessionalAvailability[]>([])
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [allAppointments, setAllAppointments] = useState<any[]>([])
 
   const [professionalDialogOpen, setProfessionalDialogOpen] = useState(false)
   const [editingProfessional, setEditingProfessional] = useState<Professional | undefined>()
@@ -42,6 +47,16 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
   const [messagesDialogOpen, setMessagesDialogOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
 
+  const [appointmentDetailsOpen, setAppointmentDetailsOpen] = useState(false)
+  const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState<any>(null)
+
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+
+  // Carregar todos os agendamentos ao montar o componente
+  useEffect(() => {
+    loadAllAppointments()
+  }, [])
+
   useEffect(() => {
     if (selectedProfessional) {
       loadAvailabilities(selectedProfessional.id)
@@ -49,6 +64,28 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
       loadAppointments(selectedProfessional.id)
     }
   }, [selectedProfessional])
+
+  const loadAllAppointments = async () => {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select(
+        `
+        *,
+        patient:profiles!appointments_patient_id_fkey(full_name, email, phone, address, city, state, zip_code),
+        professional:professionals(name, specialty, clinic:clinics(clinic_name, address, phone, email))
+      `,
+      )
+      .in("professional_id", professionals.map((p) => p.id))
+      .gte("appointment_date", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]) // Últimos 30 dias
+      .lte("appointment_date", new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]) // Próximos 60 dias
+      .order("appointment_date", { ascending: true })
+
+    if (error) {
+      console.error("Erro ao carregar todos os agendamentos:", error)
+    } else {
+      setAllAppointments(data || [])
+    }
+  }
 
   const loadAvailabilities = async (professionalId: string) => {
     const { data } = await supabase
@@ -71,7 +108,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
   }
 
   const loadAppointments = async (professionalId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("appointments")
       .select(
         `
@@ -81,6 +118,10 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
       )
       .eq("professional_id", professionalId)
       .order("appointment_date", { ascending: false })
+
+    if (error) {
+      console.error("Erro ao carregar agendamentos:", error)
+    }
 
     setAppointments(data || [])
   }
@@ -219,13 +260,17 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
   const handleOpenMessages = (appointment: any) => {
     setSelectedAppointment({
       ...appointment,
-      professional: selectedProfessional,
       professional: {
         ...selectedProfessional,
         clinic: clinic,
       },
     })
     setMessagesDialogOpen(true)
+  }
+
+  const handleAppointmentClick = (appointment: any) => {
+    setSelectedAppointmentDetails(appointment)
+    setAppointmentDetailsOpen(true)
   }
 
   const handleLogout = async () => {
@@ -264,54 +309,98 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
             <h1 className="text-xl font-semibold">{clinic.clinic_name}</h1>
             <p className="text-sm text-muted-foreground">Painel da Clínica</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSettingsDialogOpen(true)}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              Configurações
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
       <div className="container mx-auto p-6">
-        <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-          {/* Professionals List */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Profissionais</CardTitle>
-                <Button
-                  size="icon-sm"
-                  onClick={() => {
-                    setEditingProfessional(undefined)
-                    setProfessionalDialogOpen(true)
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardDescription>Gerencie sua equipe</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {professionals.map((professional) => (
-                  <button
-                    key={professional.id}
-                    onClick={() => setSelectedProfessional(professional)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedProfessional?.id === professional.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "hover:bg-muted"
-                    }`}
-                  >
-                    <div className="font-medium">{professional.name}</div>
-                    <div className="text-sm opacity-80">{professional.specialty}</div>
-                  </button>
-                ))}
-                {professionals.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum profissional cadastrado</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="calendar" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+            <TabsTrigger value="calendar">
+              <CalendarDays className="mr-2 h-4 w-4" />
+              Calendário Geral
+            </TabsTrigger>
+            <TabsTrigger value="messages">
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Mensagens
+            </TabsTrigger>
+            <TabsTrigger value="professionals">
+              <Users className="mr-2 h-4 w-4" />
+              Profissionais
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Aba Calendário Geral */}
+          <TabsContent value="calendar">
+            <WeeklyCalendar 
+              appointments={allAppointments} 
+              professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
+              onAppointmentClick={handleAppointmentClick}
+            />
+          </TabsContent>
+
+          {/* Aba Mensagens */}
+          <TabsContent value="messages">
+            <MessagesTab clinicId={clinic.id} />
+          </TabsContent>
+
+          {/* Aba Profissionais */}
+          <TabsContent value="professionals">
+            <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+              {/* Professionals List */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Profissionais</CardTitle>
+                    <Button
+                      size="icon-sm"
+                      onClick={() => {
+                        setEditingProfessional(undefined)
+                        setProfessionalDialogOpen(true)
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <CardDescription>Gerencie sua equipe</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {professionals.map((professional) => (
+                      <button
+                        key={professional.id}
+                        onClick={() => setSelectedProfessional(professional)}
+                        className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                          selectedProfessional?.id === professional.id
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "hover:bg-muted"
+                        }`}
+                      >
+                        <div className="font-medium">{professional.name}</div>
+                        <div className="text-sm opacity-80">{professional.specialty}</div>
+                      </button>
+                    ))}
+                    {professionals.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum profissional cadastrado
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
           {/* Professional Details */}
           {selectedProfessional ? (
@@ -487,8 +576,12 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
                             <TableRow key={appointment.id}>
                               <TableCell>
                                 <div>
-                                  <div className="font-medium">{appointment.patient.full_name}</div>
-                                  <div className="text-sm text-muted-foreground">{appointment.patient.email}</div>
+                                  <div className="font-medium">
+                                    {appointment.patient?.full_name || "Paciente não encontrado"}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {appointment.patient?.email || "N/A"}
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -528,7 +621,9 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
               </CardContent>
             </Card>
           )}
-        </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <ProfessionalFormDialog
@@ -561,6 +656,30 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
           userType="clinic"
         />
       )}
+
+      {selectedAppointmentDetails && (
+        <AppointmentDetailsDialog
+          open={appointmentDetailsOpen}
+          onOpenChange={setAppointmentDetailsOpen}
+          appointment={selectedAppointmentDetails}
+          onUpdate={() => {
+            loadAllAppointments()
+            if (selectedProfessional) {
+              loadAppointments(selectedProfessional.id)
+            }
+          }}
+        />
+      )}
+
+      <ClinicSettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        clinic={clinic}
+        onSettingsUpdated={() => {
+          // Recarregar a página para atualizar as informações da clínica
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

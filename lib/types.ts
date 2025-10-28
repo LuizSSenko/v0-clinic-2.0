@@ -8,6 +8,10 @@ export interface Profile {
   full_name: string
   user_type: UserType
   phone?: string
+  address?: string
+  city?: string
+  state?: string
+  zip_code?: string
   created_at: string
   updated_at: string
 }
@@ -17,6 +21,8 @@ export interface Clinic {
   profile_id: string
   clinic_name: string
   address?: string
+  phone?: string
+  email?: string
   description?: string
   created_at: string
   updated_at: string
@@ -70,6 +76,11 @@ export interface Message {
   id: string
   appointment_id: string
   sender_id: string
+  message_type: 'text' | 'file'
   message: string
+  file_url?: string
+  file_name?: string
+  file_type?: string
+  file_size?: number
   created_at: string
 }

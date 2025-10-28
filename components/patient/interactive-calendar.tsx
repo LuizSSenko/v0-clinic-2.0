@@ -111,10 +111,12 @@ export function InteractiveCalendar({
 
   const nextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))
+    onDateSelect("") // Limpa a seleção ao navegar
   }
 
   const prevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))
+    onDateSelect("") // Limpa a seleção ao navegar
   }
 
   const nextWeek = () => {
@@ -130,37 +132,39 @@ export function InteractiveCalendar({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {/* Navegação do Mês */}
-      <div className="flex items-center justify-between px-2">
+      <div className="flex items-center justify-between">
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={prevMonth}
-          className="h-8 w-8"
+          className="h-6 w-6 p-0"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3 w-3" />
         </Button>
         
-        <span className="font-semibold">
+        <span className="font-semibold text-xs">
           {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </span>
         
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={nextMonth}
-          className="h-8 w-8"
+          className="h-6 w-6 p-0"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3" />
         </Button>
       </div>
 
       {/* Calendário Mensal */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5">
         {/* Cabeçalhos dos dias */}
         {weekDayNames.map(day => (
-          <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+          <div key={day} className="text-center text-[9px] font-medium text-muted-foreground py-0.5">
             {day}
           </div>
         ))}
@@ -180,15 +184,16 @@ export function InteractiveCalendar({
           return (
             <button
               key={index}
+              type="button"
               onClick={() => handleDateClick(date)}
               disabled={isDisabled}
               className={cn(
-                "aspect-square p-2 text-sm rounded-lg transition-all relative flex items-center justify-center font-medium",
+                "w-6 h-6 p-0 text-[9px] rounded transition-all relative flex items-center justify-center",
                 "hover:bg-accent",
-                isSelected && "bg-primary text-primary-foreground hover:bg-primary font-bold ring-2 ring-primary ring-offset-1",
+                isSelected && "bg-primary text-primary-foreground hover:bg-primary font-bold ring-1 ring-primary",
                 isDisabled && "opacity-30 cursor-not-allowed hover:bg-transparent text-muted-foreground",
                 !isDisabled && !isSelected && isWorking && "bg-blue-500 text-white hover:bg-blue-600 font-semibold",
-                isToday && !isSelected && isWorking && "ring-2 ring-blue-300",
+                isToday && !isSelected && isWorking && "ring-1 ring-blue-300",
                 isPast && "line-through"
               )}
             >

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Spinner } from "@/components/ui/spinner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState("Entrando...")
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -23,6 +25,7 @@ export default function LoginPage() {
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
+    setLoadingMessage("Autenticando...")
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -32,25 +35,29 @@ export default function LoginPage() {
       if (authError) throw authError
 
       // Get user profile to determine redirect
+      setLoadingMessage("Carregando perfil...")
       const { data: profile } = await supabase
         .from("profiles")
         .select("user_type")
         .eq("id", authData.user.id)
         .maybeSingle()
 
+      setLoadingMessage("Redirecionando...")
       if (profile?.user_type === "clinic") {
         router.push("/clinic/dashboard")
       } else if (profile?.user_type === "patient") {
         router.push("/patient/dashboard")
       } else {
         // Se não tem perfil, redireciona para página de setup
+        setIsLoading(false)
         setError("Perfil não encontrado. Por favor, complete seu cadastro.")
+        return
       }
       router.refresh()
+      // Mantém o loading até o redirecionamento completo
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Erro ao fazer login")
-    } finally {
       setIsLoading(false)
+      setError(error instanceof Error ? error.message : "Erro ao fazer login")
     }
   }
 
@@ -74,6 +81,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -84,11 +92,19 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Entrando..." : "Entrar"}
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Spinner className="h-4 w-4" />
+                      {loadingMessage}
+                    </span>
+                  ) : (
+                    "Entrar"
+                  )}
                 </Button>
               </div>
               <div className="mt-4 text-center text-sm">

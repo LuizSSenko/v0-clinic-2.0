@@ -333,6 +333,21 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
       }
 
       console.log("✅ AGENDAMENTO CRIADO COM SUCESSO:", newAppointment)
+      
+      // Enviar email de notificação para o paciente
+      try {
+        await supabase.functions.invoke('send-appointment-email', {
+          body: { 
+            appointmentId: newAppointment.id, 
+            action: 'created' 
+          }
+        })
+        console.log("📧 Email de confirmação enviado")
+      } catch (emailError) {
+        console.error("⚠️ Erro ao enviar email (não bloqueia o agendamento):", emailError)
+        // Não falha o agendamento se o email não for enviado
+      }
+      
       onAppointmentBooked(newAppointment)
       onOpenChange(false)
       resetForm()
@@ -376,20 +391,20 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
         if (!open) resetForm()
       }}
     >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Agendar Consulta</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="space-y-0.5 pb-1">
+          <DialogTitle className="text-base font-bold">Agendar Consulta</DialogTitle>
+          <DialogDescription className="text-xs">
             Selecione a clínica, profissional e horário para sua consulta
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-2 pb-1">
           {/* Seleção de Clínica */}
-          <div className="space-y-2">
-            <Label className="font-semibold">Clínica</Label>
+          <div className="space-y-1">
+            <Label className="font-semibold text-xs">Clínica</Label>
             <Select value={selectedClinic} onValueChange={setSelectedClinic}>
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="Escolha uma clínica" />
               </SelectTrigger>
               <SelectContent>
@@ -404,10 +419,10 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
 
           {/* Seleção de Profissional */}
           {selectedClinic && (
-            <div className="space-y-2">
-              <Label className="font-semibold">Profissional</Label>
+            <div className="space-y-1">
+              <Label className="font-semibold text-xs">Profissional</Label>
               <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Escolha um profissional" />
                 </SelectTrigger>
                 <SelectContent>
@@ -423,8 +438,8 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
 
           {/* Calendário Mensal */}
           {canProceedToStep2 && (
-            <div className="space-y-3">
-              <Label className="font-semibold">Selecione uma Data</Label>
+            <div className="space-y-1">
+              <Label className="font-semibold text-xs">Selecione uma Data</Label>
               
               <InteractiveCalendar
                 professionalId={selectedProfessional}
@@ -439,13 +454,13 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
 
               {/* Horários disponíveis aparecem aqui embaixo quando seleciona data */}
               {selectedDate && (
-                <div className="space-y-2 pt-2">
+                <div className="space-y-1 pt-0.5">
                   {loadingSlots ? (
-                    <div className="flex items-center justify-center py-4">
+                    <div className="flex items-center justify-center py-2">
                       <Spinner />
                     </div>
                   ) : availableSlots.length > 0 ? (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-4 gap-1">
                       {availableSlots.map((slot) => (
                         <Button
                           key={slot}
@@ -453,7 +468,7 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
                           variant={selectedTime === slot ? "default" : "outline"}
                           onClick={() => setSelectedTime(slot)}
                           size="sm"
-                          className="font-medium"
+                          className="font-medium h-7 text-[10px] px-1"
                         >
                           {slot}
                         </Button>
@@ -471,26 +486,26 @@ export function BookAppointmentDialog({ open, onOpenChange, onAppointmentBooked 
 
           {/* Observações */}
           {canProceedToStep3 && (
-            <div className="space-y-2">
-              <Label className="font-semibold">Observações (Opcional)</Label>
+            <div className="space-y-1">
+              <Label className="font-semibold text-xs">Observações (Opcional)</Label>
               <Textarea
                 placeholder="Motivo da consulta..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                className="resize-none text-sm"
+                rows={1.5}
+                className="resize-none text-xs min-h-[60px]"
               />
             </div>
           )}
 
-          <DialogFooter className="gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-8 text-xs">
               Cancelar
             </Button>
             <Button 
               type="submit" 
               disabled={!canProceedToStep3 || isLoading}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 h-8 text-xs"
             >
               {isLoading ? "Agendando..." : "Confirmar Agendamento"}
             </Button>

@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Profile } from "@/lib/types"
-import { Calendar, Clock, LogOut, Plus } from "lucide-react"
+import { Calendar, Clock, LogOut, Plus, Settings } from "lucide-react"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { AppointmentCard } from "./appointment-card"
 import { BookAppointmentDialog } from "./book-appointment-dialog"
 import { MessagesDialog } from "../shared/messages-dialog"
+import { SettingsDialog } from "./settings-dialog"
 
 interface PatientDashboardClientProps {
   profile: Profile
@@ -21,8 +22,10 @@ export function PatientDashboardClient({ profile, initialAppointments }: Patient
   const router = useRouter()
   const supabase = createClient()
 
+  const [currentProfile, setCurrentProfile] = useState(profile)
   const [appointments, setAppointments] = useState(initialAppointments)
   const [bookDialogOpen, setBookDialogOpen] = useState(false)
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
   const [messagesDialogOpen, setMessagesDialogOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
 
@@ -38,6 +41,16 @@ export function PatientDashboardClient({ profile, initialAppointments }: Patient
 
     if (!error) {
       setAppointments(appointments.map((apt) => (apt.id === appointmentId ? { ...apt, status: "cancelled" } : apt)))
+      
+      // Enviar email de notificação de cancelamento
+      try {
+        await supabase.functions.invoke('send-appointment-email', {
+          body: { appointmentId, action: 'cancelled' }
+        })
+        console.log("📧 Email de cancelamento enviado ao paciente")
+      } catch (emailError) {
+        console.error("⚠️ Erro ao enviar email (não bloqueia o cancelamento):", emailError)
+      }
     }
   }
 
@@ -76,13 +89,19 @@ export function PatientDashboardClient({ profile, initialAppointments }: Patient
       <header className="border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div>
-            <h1 className="text-xl font-semibold">Olá, {profile.full_name}</h1>
+            <h1 className="text-xl font-semibold">Olá, {currentProfile.full_name}</h1>
             <p className="text-sm text-muted-foreground">Seus agendamentos</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSettingsDialogOpen(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Configurações
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -173,6 +192,13 @@ export function PatientDashboardClient({ profile, initialAppointments }: Patient
         open={bookDialogOpen}
         onOpenChange={setBookDialogOpen}
         onAppointmentBooked={handleAppointmentBooked}
+      />
+
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        profile={currentProfile}
+        onProfileUpdated={setCurrentProfile}
       />
 
       {selectedAppointment && (
