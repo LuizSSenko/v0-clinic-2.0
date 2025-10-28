@@ -5,10 +5,10 @@
 Os agendamentos têm `patient_id` válidos, mas o Supabase não consegue carregar os dados do paciente porque **os perfis não existem na tabela `profiles`**.
 
 Exemplo do console:
-```
+\`\`\`
 ⚠️ Agendamento 0 (ID: 03a55322-...) não tem paciente associado. 
 patient_id: 70c5899d-c1e1-428f-bb46-f80d734197ed
-```
+\`\`\`
 
 ## Causa do Problema
 
@@ -22,7 +22,7 @@ O trigger `handle_new_user()` que deveria criar o perfil automaticamente pode te
 2. Vá em **SQL Editor**
 3. Execute a **primeira query** do arquivo `010_check_missing_profiles.sql`:
 
-```sql
+\`\`\`sql
 SELECT 
     a.id as appointment_id,
     a.patient_id,
@@ -31,7 +31,7 @@ SELECT
 FROM appointments a
 LEFT JOIN profiles p ON a.patient_id = p.id
 WHERE p.id IS NULL;
-```
+\`\`\`
 
 Se retornar linhas, significa que há agendamentos com pacientes sem perfil.
 
@@ -39,7 +39,7 @@ Se retornar linhas, significa que há agendamentos com pacientes sem perfil.
 
 Execute a **segunda query**:
 
-```sql
+\`\`\`sql
 SELECT 
     u.id,
     u.email,
@@ -47,7 +47,7 @@ SELECT
 FROM auth.users u
 LEFT JOIN profiles p ON u.id = p.id
 WHERE p.id IS NULL;
-```
+\`\`\`
 
 Isso mostra quais usuários existem no `auth.users` mas não têm perfil em `profiles`.
 
@@ -55,7 +55,7 @@ Isso mostra quais usuários existem no `auth.users` mas não têm perfil em `pro
 
 Execute a **terceira query** (o INSERT):
 
-```sql
+\`\`\`sql
 INSERT INTO profiles (id, email, full_name, user_type)
 SELECT 
     u.id,
@@ -66,7 +66,7 @@ FROM auth.users u
 LEFT JOIN profiles p ON u.id = p.id
 WHERE p.id IS NULL
 ON CONFLICT (id) DO NOTHING;
-```
+\`\`\`
 
 Esta query cria perfis para todos os usuários que não têm.
 
@@ -74,7 +74,7 @@ Esta query cria perfis para todos os usuários que não têm.
 
 Execute a **quarta query** para confirmar que agora todos os agendamentos têm pacientes:
 
-```sql
+\`\`\`sql
 SELECT 
     a.id as appointment_id,
     a.patient_id,
@@ -84,7 +84,7 @@ SELECT
 FROM appointments a
 LEFT JOIN profiles p ON a.patient_id = p.id
 ORDER BY a.appointment_date DESC;
-```
+\`\`\`
 
 Todos devem mostrar `status = 'OK'`.
 

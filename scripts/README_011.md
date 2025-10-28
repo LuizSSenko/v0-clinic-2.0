@@ -7,18 +7,18 @@ Corrigir as políticas de Row Level Security (RLS) para permitir que clínicas v
 A query do Supabase está retornando `patient: null` mesmo com os perfis existindo no banco de dados. Isso acontece porque **as políticas RLS da tabela `profiles` estão bloqueando o acesso** quando uma clínica tenta ler dados de perfis de pacientes através do JOIN.
 
 ### Console Output:
-```
+\`\`\`
 📋 Total de agendamentos carregados: 11
 "patient": null  // ❌ Todos retornam null
 "patient_id": "70c5899d-c1e1-428f-bb46-f80d734197ed"  // ✅ ID válido
-```
+\`\`\`
 
 ### Verificação no Banco:
-```sql
+\`\`\`sql
 -- Banco de dados confirma que perfis existem:
 SELECT * FROM profiles WHERE id = '70c5899d-c1e1-428f-bb46-f80d734197ed';
 -- ✅ Retorna: full_name = "Paciente", user_type = "patient"
-```
+\`\`\`
 
 **Conclusão**: O problema é RLS bloqueando acesso cross-user.
 
@@ -32,7 +32,7 @@ SELECT * FROM profiles WHERE id = '70c5899d-c1e1-428f-bb46-f80d734197ed';
 
 ### Como a política funciona:
 
-```sql
+\`\`\`sql
 -- Usuário pode acessar perfil SE:
 -- 1. É o próprio perfil (auth.uid() = id)
 -- OU
@@ -46,7 +46,7 @@ EXISTS (
     AND clinic_profile.id = auth.uid()        -- É a clínica logada
     AND clinic_profile.user_type = 'clinic'   -- Confirma tipo clinic
 )
-```
+\`\`\`
 
 ## 📋 Como Executar
 
@@ -56,7 +56,7 @@ EXISTS (
 3. No menu lateral, clique em **SQL Editor**
 
 ### Passo 2: Executar Query 1 (Verificar Políticas)
-```sql
+\`\`\`sql
 SELECT 
     schemaname,
     tablename,
@@ -68,12 +68,12 @@ SELECT
     with_check
 FROM pg_policies
 WHERE tablename = 'profiles';
-```
+\`\`\`
 
 Você verá as políticas existentes. Anote o que aparecer.
 
 ### Passo 3: Executar Query 2 e 3 (Criar Nova Política)
-```sql
+\`\`\`sql
 -- Remover política antiga se existir
 DROP POLICY IF EXISTS "Clinics can view patient profiles through appointments" ON profiles;
 
@@ -94,12 +94,12 @@ USING (
         AND clinic_profile.user_type = 'clinic'
     )
 );
-```
+\`\`\`
 
 **Resultado esperado**: `CREATE POLICY` ou `SUCCESS`
 
 ### Passo 4: Executar Query 4 (Verificar)
-```sql
+\`\`\`sql
 SELECT 
     policyname,
     permissive,
@@ -108,7 +108,7 @@ SELECT
 FROM pg_policies
 WHERE tablename = 'profiles' 
 AND policyname = 'Clinics can view patient profiles through appointments';
-```
+\`\`\`
 
 **Resultado esperado**: 1 linha mostrando a política criada
 
@@ -121,7 +121,7 @@ AND policyname = 'Clinics can view patient profiles through appointments';
 6. Abra console (F12)
 
 **Resultado esperado**:
-```
+\`\`\`
 📋 Dados completos: [
   {
     "patient": {                    // ✅ Não mais null!
@@ -132,7 +132,7 @@ AND policyname = 'Clinics can view patient profiles through appointments';
     }
   }
 ]
-```
+\`\`\`
 
 ## 🔍 Troubleshooting
 
@@ -154,18 +154,18 @@ AND policyname = 'Clinics can view patient profiles through appointments';
 ## 📊 Impacto
 
 ### Antes (Bloqueado por RLS):
-```
+\`\`\`
 Query: appointments com JOIN em profiles
 Supabase RLS: ❌ Bloqueia acesso a profiles de outros usuários
 Resultado: patient: null
-```
+\`\`\`
 
 ### Depois (Liberado pela Nova Política):
-```
+\`\`\`
 Query: appointments com JOIN em profiles  
 Supabase RLS: ✅ Permite se existe agendamento
 Resultado: patient: { full_name: "Paciente", ... }
-```
+\`\`\`
 
 ## ⚠️ Segurança
 

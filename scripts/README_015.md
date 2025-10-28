@@ -2,9 +2,9 @@
 
 ## Problema
 Ao tentar confirmar ou reagendar um agendamento, aparece o erro:
-```
+\`\`\`
 invalid input value for enum appointment_status: "confirmed"
-```
+\`\`\`
 
 ## Solução
 
@@ -43,8 +43,8 @@ O sistema funcionará corretamente e você poderá:
 
 Para verificar se funcionou, execute no SQL Editor:
 
-```sql
+\`\`\`sql
 SELECT unnest(enum_range(NULL::appointment_status))::text AS status_values;
-```
+\`\`\`
 
 Deve retornar 4 linhas com os 4 status.

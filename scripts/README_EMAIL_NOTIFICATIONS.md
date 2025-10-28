@@ -35,7 +35,7 @@ Este sistema envia emails automáticos para os pacientes quando:
 
 **Opção 1: Usando Scoop (Recomendado para Windows)**
 
-```powershell
+\`\`\`powershell
 # Instalar Scoop (se ainda não tiver)
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
@@ -46,7 +46,7 @@ scoop install supabase
 
 # Verificar instalação
 supabase --version
-```
+\`\`\`
 
 **Opção 2: Download direto do executável**
 
@@ -58,25 +58,25 @@ supabase --version
 
 **Opção 3: Usar npx (sem instalação global)**
 
-```powershell
+\`\`\`powershell
 # Use npx antes de cada comando
 npx supabase --version
 npx supabase login
 npx supabase projects list
 # etc...
-```
+\`\`\`
 
 ### 4. Fazer Login no Supabase
 
-```powershell
+\`\`\`powershell
 supabase login
-```
+\`\`\`
 
 Isso abrirá o navegador para você autorizar.
 
 ### 5. Linkar seu Projeto
 
-```powershell
+\`\`\`powershell
 cd c:\Users\lgsse\OneDrive\Documentos\000_DEV\Javascript\v0-clinic-2.0
 
 # Listar seus projetos
@@ -84,24 +84,24 @@ npx supabase projects list
 
 # Linkar com seu projeto (substitua o ID pelo seu)
 npx supabase link --project-ref SEU_PROJECT_ID
-```
+\`\`\`
 
 ### 6. Configurar Variáveis de Ambiente (Secrets)
 
-```powershell
+\`\`\`powershell
 # Adicionar a API Key do Resend como secret
 npx supabase secrets set RESEND_API_KEY=re_sua_chave_aqui
-```
+\`\`\`
 
 ### 7. Deploy da Edge Function
 
-```powershell
+\`\`\`powershell
 # Deploy da função
 npx supabase functions deploy send-appointment-email
 
 # Verificar se funcionou
 npx supabase functions list
-```
+\`\`\`
 
 ### 8. ~~Habilitar pg_net~~ (PULAR ESTA ETAPA)
 
@@ -119,15 +119,15 @@ Isso é mais simples, não requer permissões administrativas e funciona perfeit
 
 Edite o arquivo `supabase/functions/send-appointment-email/index.ts` linha 42:
 
-```typescript
+\`\`\`typescript
 from: 'Clínica <onboarding@resend.dev>', // Trocar por: noreply@seudominio.com.br
-```
+\`\`\`
 
 Depois faça deploy novamente:
 
-```powershell
+\`\`\`powershell
 npx supabase functions deploy send-appointment-email
-```
+\`\`\`
 
 ## 🧪 Testar o Sistema
 
@@ -147,9 +147,9 @@ npx supabase functions deploy send-appointment-email
 
 ### Ver Logs da Edge Function
 
-```powershell
+\`\`\`powershell
 supabase functions logs send-appointment-email
-```
+\`\`\`
 
 Ou no dashboard: **Edge Functions** > **send-appointment-email** > **Logs**
 
@@ -194,25 +194,25 @@ O sistema envia 4 tipos de emails diferentes:
 ### Email não chega
 
 1. **Verificar logs:**
-   ```powershell
+   \`\`\`powershell
    supabase functions logs send-appointment-email
-   ```
+   \`\`\`
 
 2. **Verificar se trigger foi criado:**
-   ```sql
+   \`\`\`sql
    SELECT * FROM information_schema.triggers 
    WHERE event_object_table = 'appointments';
-   ```
+   \`\`\`
 
 3. **Verificar se pg_net está habilitado:**
-   ```sql
+   \`\`\`sql
    SELECT * FROM pg_extension WHERE extname = 'pg_net';
-   ```
+   \`\`\`
 
 4. **Testar Edge Function manualmente:**
-   ```powershell
+   \`\`\`powershell
    supabase functions invoke send-appointment-email --data '{"appointmentId":"UUID_DO_AGENDAMENTO","action":"created"}'
-   ```
+   \`\`\`
 
 ### Email vai para spam
 
