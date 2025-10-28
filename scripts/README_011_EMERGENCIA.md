@@ -21,13 +21,13 @@ Execute o script `012_check_users_and_profiles.sql` no Supabase SQL Editor:
 5. Clique em **RUN**
 
 ### Resultado Esperado:
-```
+\`\`\`
 Query 7: Contas de teste
 email                    | full_name        | user_type | created_at
 -------------------------+------------------+-----------+------------
 lgssenko@gmail.com       | Clínica Teste    | clinic    | 2025-10-15
 fabiosoaresgt@gmail.com  | Fábio Soares     | patient   | 2025-10-21
-```
+\`\`\`
 
 **Se aparecer as 2 contas acima**: ✅ Contas existem, problema é só RLS  
 **Se NÃO aparecer**: ❌ Contas foram deletadas, precisamos recriar
@@ -55,7 +55,7 @@ Execute o script `011_fix_rls_policies.sql` **ATUALIZADO** no Supabase SQL Edito
 3. Clique em **RUN**
 
 ### Resultado Esperado:
-```
+\`\`\`
 Query 6: Políticas criadas
 policyname                                        | tipo
 --------------------------------------------------+--------------
@@ -67,7 +67,7 @@ Query 7: Teste de leitura
 TESTE DE LEITURA | total_profiles_visiveis
 -----------------+------------------------
 TESTE DE LEITURA | 11
-```
+\`\`\`
 
 **Se mostrar 11 perfis visíveis**: ✅ RLS corrigido!
 
@@ -104,7 +104,7 @@ TESTE DE LEITURA | 11
 
 Após confirmar que tudo funciona, você pode criar políticas mais específicas:
 
-```sql
+\`\`\`sql
 -- Política mais restritiva (exemplo futuro)
 CREATE POLICY "Clinics see own profile and patient profiles"
 ON profiles FOR SELECT
@@ -118,7 +118,7 @@ USING (
         AND p.clinic_id = auth.uid()
     ))
 );
-```
+\`\`\`
 
 Mas **POR ENQUANTO**, deixe simples para funcionar.
 

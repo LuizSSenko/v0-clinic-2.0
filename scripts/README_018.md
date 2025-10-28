@@ -45,15 +45,15 @@ Adiciona colunas à tabela `messages`:
 5. Execute (Ctrl+Enter)
 
 ### Via Supabase CLI
-```bash
+\`\`\`bash
 npx supabase db execute --project-ref ncojbureebjohyptflcz < scripts/018_add_message_attachments.sql
-```
+\`\`\`
 
 ## Verification
 
 Após rodar a migration, verifique:
 
-```sql
+\`\`\`sql
 -- Verificar novas colunas
 SELECT column_name, data_type, column_default
 FROM information_schema.columns
@@ -70,7 +70,7 @@ SELECT schemaname, tablename, policyname
 FROM pg_policies
 WHERE schemaname = 'storage'
   AND tablename = 'objects';
-```
+\`\`\`
 
 ## Usage
 
@@ -125,7 +125,7 @@ WHERE schemaname = 'storage'
 
 ## Architecture
 
-```
+\`\`\`
 ┌─────────────┐
 │   Patient   │
 │  or Clinic  │
@@ -156,13 +156,13 @@ WHERE schemaname = 'storage'
                   │  Save to DB  │
                   │  (file_url)  │
                   └──────────────┘
-```
+\`\`\`
 
 ## Rollback
 
 Se precisar reverter:
 
-```sql
+\`\`\`sql
 -- Remover colunas
 ALTER TABLE messages DROP COLUMN IF EXISTS message_type;
 ALTER TABLE messages DROP COLUMN IF EXISTS file_url;
@@ -173,7 +173,7 @@ ALTER TABLE messages DROP COLUMN IF EXISTS file_size;
 -- Remover bucket (CUIDADO: apaga todos os arquivos!)
 DELETE FROM storage.objects WHERE bucket_id = 'message-attachments';
 DELETE FROM storage.buckets WHERE id = 'message-attachments';
-```
+\`\`\`
 
 ## Related Files
 

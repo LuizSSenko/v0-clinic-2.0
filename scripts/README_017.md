@@ -26,19 +26,19 @@ When we implemented email notifications, we added the clinic name and address to
 6. Verify the output shows: "Column phone added to clinics table" and "Column email added to clinics table"
 
 ### Option 2: Using Supabase CLI
-```bash
+\`\`\`bash
 npx supabase db execute --project-ref ncojbureebjohyptflcz < scripts/017_add_clinic_contact_fields.sql
-```
+\`\`\`
 
 ## Verification
 After running the migration, you can verify it worked by running:
 
-```sql
+\`\`\`sql
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_name = 'clinics'
 ORDER BY ordinal_position;
-```
+\`\`\`
 
 You should see `phone` and `email` in the list of columns.
 
@@ -62,10 +62,10 @@ After applying this migration:
 ## Rollback (if needed)
 If you need to rollback this migration:
 
-```sql
+\`\`\`sql
 ALTER TABLE clinics DROP COLUMN IF EXISTS phone;
 ALTER TABLE clinics DROP COLUMN IF EXISTS email;
-```
+\`\`\`
 
 Note: This will permanently delete any phone and email data that was stored.
 

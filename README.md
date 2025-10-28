@@ -186,7 +186,7 @@ Ao clicar em um agendamento no calendário:
 
 ### Fluxo de Dados
 
-```
+\`\`\`
 ┌─────────────────┐
 │   Next.js App   │
 │  (Vercel Edge)  │
@@ -206,7 +206,7 @@ Ao clicar em um agendamento no calendário:
                     │  Resend API     │
                     │  (Email Sender) │
                     └─────────────────┘
-```
+\`\`\`
 
 ### Fluxo de Email (Exemplo: Cancelamento)
 
@@ -290,7 +290,7 @@ Todas as tabelas têm políticas RLS implementadas:
 **Como funciona?**
 
 1. **Carregamento de Dados**
-   ```typescript
+   \`\`\`typescript
    // Query com JOINs
    const { data } = await supabase
      .from('appointments')
@@ -301,7 +301,7 @@ Todas as tabelas têm políticas RLS implementadas:
      `)
      .gte('appointment_date', startDate)
      .lte('appointment_date', endDate)
-   ```
+   \`\`\`
 
 2. **Renderização**
    - Grid de 7 colunas (uma por dia da semana)
@@ -338,9 +338,9 @@ Todas as tabelas têm políticas RLS implementadas:
 - 3 botões de ação + botão Editar
 
 #### Modo Edição
-```typescript
+\`\`\`typescript
 const [isEditing, setIsEditing] = useState(false)
-```
+\`\`\`
 - Campos editáveis: data, horário início/fim, observações
 - Validações:
   - Data >= hoje
@@ -350,7 +350,7 @@ const [isEditing, setIsEditing] = useState(false)
 #### Ações com Email Integrado
 
 **Confirmar Consulta:**
-```typescript
+\`\`\`typescript
 const handleConfirm = async () => {
   // 1. Atualiza banco
   await supabase.from('appointments')
@@ -362,7 +362,7 @@ const handleConfirm = async () => {
   // 3. Feedback
   toast.success('Consulta confirmada!')
 }
-```
+\`\`\`
 
 **Reagendar:**
 - Salva nova data/hora/observações
@@ -387,7 +387,7 @@ const handleConfirm = async () => {
 **Como funciona?**
 
 #### 1. Chamada da Edge Function
-```typescript
+\`\`\`typescript
 // Do Next.js Client
 await supabase.functions.invoke('send-appointment-email', {
   body: { 
@@ -395,10 +395,10 @@ await supabase.functions.invoke('send-appointment-email', {
     action: 'created' | 'confirmed' | 'rescheduled' | 'cancelled'
   }
 })
-```
+\`\`\`
 
 #### 2. Processamento na Edge Function
-```typescript
+\`\`\`typescript
 // 1. Busca dados completos com JOIN
 const { data: appointment } = await supabase
   .from('appointments')
@@ -430,7 +430,7 @@ await fetch('https://api.resend.com/emails', {
     html: emailData.html
   })
 })
-```
+\`\`\`
 
 #### 3. Templates HTML Responsivos
 
@@ -441,7 +441,7 @@ Cada template inclui:
 - Footer com aviso "Email automático"
 
 **Helper Function:**
-```typescript
+\`\`\`typescript
 const clinicInfoBlock = `
   <div class="detail">
     <div class="label">🏥 Clínica:</div>
@@ -451,7 +451,7 @@ const clinicInfoBlock = `
     ${email ? `<div>📧 ${email}</div>` : ''}
   </div>
 `
-```
+\`\`\`
 
 #### 4. Tratamento de Erros
 - Emails são **não-bloqueantes**: se falharem, a operação principal (agendar/cancelar) ainda funciona
@@ -475,14 +475,14 @@ const clinicInfoBlock = `
 **Como funciona?**
 
 1. **Cadastro de Horário Regular**
-   ```typescript
+   \`\`\`typescript
    {
      professional_id: 'uuid',
      day_of_week: 'monday',
      start_time: '09:00',
      end_time: '12:00'
    }
-   ```
+   \`\`\`
    - Permite múltiplos períodos por dia (ex: 09:00-12:00 + 14:00-18:00)
 
 2. **Validações**
@@ -507,7 +507,7 @@ const clinicInfoBlock = `
 **Como funciona?**
 
 #### Bloqueio Pontual (Data Específica)
-```typescript
+\`\`\`typescript
 {
   professional_id: 'uuid',
   date: '2025-11-15',
@@ -516,10 +516,10 @@ const clinicInfoBlock = `
   reason: 'Férias',
   is_recurring: false
 }
-```
+\`\`\`
 
 #### Bloqueio Recorrente (Dia da Semana)
-```typescript
+\`\`\`typescript
 {
   professional_id: 'uuid',
   day_of_week: 'wednesday',
@@ -529,10 +529,10 @@ const clinicInfoBlock = `
   is_recurring: true,
   date: null // não tem data específica
 }
-```
+\`\`\`
 
 **Uso no Agendamento:**
-```typescript
+\`\`\`typescript
 // Query filtra bloqueios pontuais
 .eq('date', selectedDate)
 .eq('is_recurring', false)
@@ -540,7 +540,7 @@ const clinicInfoBlock = `
 // Query filtra bloqueios recorrentes
 .eq('day_of_week', dayOfWeek)
 .eq('is_recurring', true)
-```
+\`\`\`
 
 **Quando?** 
 - Férias, feriados, eventos (pontual)
@@ -562,7 +562,7 @@ const clinicInfoBlock = `
 
 ### Passo a Passo
 
-```bash
+\`\`\`bash
 # 1. Clone o repositório
 git clone https://github.com/LuizSSenko/v0-clinic-2.0.git
 cd v0-clinic-2.0
@@ -575,7 +575,7 @@ cp .env.example .env.local
 
 # 4. Inicie o servidor de desenvolvimento
 pnpm dev
-```
+\`\`\`
 
 Acesse: http://localhost:3000
 
@@ -594,26 +594,26 @@ Acesse: http://localhost:3000
 Acesse: `SQL Editor` no dashboard
 
 Execute os scripts em ordem:
-```
+\`\`\`
 scripts/001_create_tables.sql
 scripts/002_enable_rls.sql
 scripts/003_create_profile_trigger.sql
 scripts/015_add_confirmed_status.sql
 scripts/016_remove_old_triggers.sql
 scripts/017_add_clinic_contact_fields.sql
-```
+\`\`\`
 
 ### 2. Resend (Emails)
 
-```bash
+\`\`\`bash
 # 1. Crie conta em resend.com
 # 2. Acesse: API Keys → Create API Key
 # 3. Copie a chave (começa com re_)
-```
+\`\`\`
 
 ### 3. Edge Function
 
-```bash
+\`\`\`bash
 # Instalar Supabase CLI
 npx supabase login
 
@@ -627,26 +627,26 @@ npx supabase secrets set \
   RESEND_API_KEY=re_sua_chave_aqui \
   SUPABASE_URL=https://seu-projeto.supabase.co \
   SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
-```
+\`\`\`
 
 ### 4. Variáveis de Ambiente
 
 Crie `.env.local`:
 
-```bash
+\`\`\`bash
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_anon_key
 
 # Edge Function (apenas se diferente do Supabase URL)
 NEXT_PUBLIC_EDGE_FUNCTION_URL=https://seu-projeto.supabase.co/functions/v1
-```
+\`\`\`
 
 ---
 
 ## 📁 Estrutura do Projeto
 
-```
+\`\`\`
 v0-clinic-2.0/
 ├── app/                          # Next.js App Router
 │   ├── auth/                     # Páginas de autenticação
@@ -729,7 +729,7 @@ v0-clinic-2.0/
 ├── pnpm-lock.yaml
 ├── tsconfig.json
 └── README.md                     # Este arquivo
-```
+\`\`\`
 
 ---
 
@@ -739,7 +739,7 @@ v0-clinic-2.0/
 
 #### `profiles`
 Estende `auth.users` do Supabase Auth
-```sql
+\`\`\`sql
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id),
   email TEXT UNIQUE NOT NULL,
@@ -753,10 +753,10 @@ CREATE TABLE profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
+\`\`\`
 
 #### `clinics`
-```sql
+\`\`\`sql
 CREATE TABLE clinics (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   profile_id UUID UNIQUE REFERENCES profiles(id),
@@ -768,10 +768,10 @@ CREATE TABLE clinics (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
+\`\`\`
 
 #### `professionals`
-```sql
+\`\`\`sql
 CREATE TABLE professionals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   clinic_id UUID REFERENCES clinics(id) ON DELETE CASCADE,
@@ -781,10 +781,10 @@ CREATE TABLE professionals (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
+\`\`\`
 
 #### `professional_availability`
-```sql
+\`\`\`sql
 CREATE TABLE professional_availability (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   professional_id UUID REFERENCES professionals(id) ON DELETE CASCADE,
@@ -796,10 +796,10 @@ CREATE TABLE professional_availability (
   end_time TIME NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
+\`\`\`
 
 #### `blocked_times`
-```sql
+\`\`\`sql
 CREATE TABLE blocked_times (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   professional_id UUID REFERENCES professionals(id) ON DELETE CASCADE,
@@ -811,10 +811,10 @@ CREATE TABLE blocked_times (
   day_of_week TEXT,             -- Usado apenas se is_recurring=true
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
+\`\`\`
 
 #### `appointments`
-```sql
+\`\`\`sql
 CREATE TYPE appointment_status AS ENUM (
   'scheduled', 'confirmed', 'cancelled', 'completed'
 );
@@ -831,11 +831,11 @@ CREATE TABLE appointments (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
+\`\`\`
 
 ### Relacionamentos
 
-```
+\`\`\`
 profiles (user_type='clinic')
   ↓ one-to-one
 clinics
@@ -847,11 +847,11 @@ professionals
   └─ appointments
        ↓ many-to-one
      profiles (user_type='patient')
-```
+\`\`\`
 
 ### Índices Importantes
 
-```sql
+\`\`\`sql
 -- Performance em queries frequentes
 CREATE INDEX idx_appointments_date ON appointments(appointment_date);
 CREATE INDEX idx_appointments_professional ON appointments(professional_id);
@@ -859,26 +859,26 @@ CREATE INDEX idx_appointments_patient ON appointments(patient_id);
 CREATE INDEX idx_appointments_status ON appointments(status);
 CREATE INDEX idx_availability_professional ON professional_availability(professional_id);
 CREATE INDEX idx_blocked_times_professional ON blocked_times(professional_id);
-```
+\`\`\`
 
 ### Triggers
 
 #### 1. Criação Automática de Profile
-```sql
+\`\`\`sql
 -- Quando usuário se cadastra no Supabase Auth,
 -- automaticamente cria registro em profiles e clinics
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
-```
+\`\`\`
 
 #### 2. Prevenção de Conflitos
-```sql
+\`\`\`sql
 -- Impede agendamentos sobrepostos para o mesmo profissional
 CREATE TRIGGER check_appointment_overlap
   BEFORE INSERT OR UPDATE ON appointments
   FOR EACH ROW EXECUTE FUNCTION prevent_appointment_overlap();
-```
+\`\`\`
 
 ---
 
@@ -886,7 +886,7 @@ CREATE TRIGGER check_appointment_overlap
 
 ### Arquitetura do Envio
 
-```mermaid
+\`\`\`mermaid
 graph LR
     A[Next.js Client] -->|supabase.functions.invoke| B[Edge Function]
     B -->|SELECT com JOIN| C[Supabase DB]
@@ -894,13 +894,13 @@ graph LR
     B -->|prepareEmailData| D[Template HTML]
     D -->|POST| E[Resend API]
     E -->|SMTP| F[Email do Paciente]
-```
+\`\`\`
 
 ### Templates de Email
 
 Todos os templates seguem estrutura similar:
 
-```html
+\`\`\`html
 <!DOCTYPE html>
 <html>
   <head>
@@ -940,7 +940,7 @@ Todos os templates seguem estrutura similar:
     </div>
   </body>
 </html>
-```
+\`\`\`
 
 ### Cores por Tipo
 
@@ -974,7 +974,7 @@ Todos os templates seguem estrutura similar:
 
 ### Deploy Frontend (Vercel)
 
-```bash
+\`\`\`bash
 # Método 1: Via Vercel CLI
 npm i -g vercel
 vercel login
@@ -986,17 +986,17 @@ vercel
 # 3. Importe repositório
 # 4. Configure variáveis de ambiente
 # 5. Deploy
-```
+\`\`\`
 
 **Variáveis de Ambiente no Vercel:**
-```
+\`\`\`
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
-```
+\`\`\`
 
 ### Deploy Edge Function (Supabase)
 
-```bash
+\`\`\`bash
 # 1. Login
 npx supabase login
 
@@ -1010,7 +1010,7 @@ npx supabase functions deploy send-appointment-email --no-verify-jwt
 npx supabase secrets set RESEND_API_KEY=re_xxx
 npx supabase secrets set SUPABASE_URL=https://xxx.supabase.co
 npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=xxx
-```
+\`\`\`
 
 ### Verificação Pós-Deploy
 
@@ -1146,4 +1146,4 @@ Toda a documentação detalhada das migrations está em:
 ⭐ Se este projeto foi útil, considere dar uma estrela!
 
 </div>
-```
+\`\`\`
