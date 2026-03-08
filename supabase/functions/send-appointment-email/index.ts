@@ -16,6 +16,10 @@ serve(async (req) => {
   }
 
   try {
+    if (!RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY secret is not configured on this project')
+    }
+
     const { appointmentId, action } = await req.json()
 
     // Criar cliente Supabase com service role key para acessar todos os dados
@@ -62,6 +66,10 @@ serve(async (req) => {
     })
 
     const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(`Resend API error (${res.status}): ${data.message || JSON.stringify(data)}`)
+    }
 
     return new Response(
       JSON.stringify({ success: true, data }),

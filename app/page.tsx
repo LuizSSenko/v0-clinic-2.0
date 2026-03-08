@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Users, MessageSquare } from "lucide-react"
+import { Calendar, Clock, Users, MessageSquare, BookOpen } from "lucide-react"
 import Link from "next/link"
 
 export default function HomePage() {
@@ -13,6 +13,12 @@ export default function HomePage() {
             <span className="text-xl font-semibold">ClinicApp</span>
           </div>
           <div className="flex gap-2">
+            <Button asChild variant="ghost">
+              <Link href="/tutorial">
+                <BookOpen className="mr-2 h-4 w-4" />
+                Tutorial
+              </Link>
+            </Button>
             <Button asChild variant="ghost">
               <Link href="/auth/login">Entrar</Link>
             </Button>
@@ -30,12 +36,18 @@ export default function HomePage() {
           Conecte pacientes e clínicas de forma eficiente. Gerencie consultas, profissionais e comunicação em um só
           lugar.
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Button asChild size="lg">
             <Link href="/auth/sign-up">Começar Agora</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
             <Link href="/auth/login">Fazer Login</Link>
+          </Button>
+          <Button asChild size="lg" variant="secondary">
+            <Link href="/tutorial">
+              <BookOpen className="mr-2 h-4 w-4" />
+              Ver Tutorial
+            </Link>
           </Button>
         </div>
       </section>
