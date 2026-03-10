@@ -59,6 +59,7 @@ interface AppointmentDetailsDialogProps {
     }
   }
   onUpdate?: () => void
+  clinicId?: string
 }
 
 export function AppointmentDetailsDialog({
@@ -66,6 +67,7 @@ export function AppointmentDetailsDialog({
   onOpenChange,
   appointment,
   onUpdate,
+  clinicId,
 }: AppointmentDetailsDialogProps) {
   const supabase = createClient()
   const [isEditing, setIsEditing] = useState(false)
@@ -80,12 +82,13 @@ export function AppointmentDetailsDialog({
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + "T00:00:00")
-    return date.toLocaleDateString("pt-BR", {
+    const formatted = date.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "long",
       year: "numeric",
       weekday: "long",
     })
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1)
   }
 
   const formatTime = (timeStr: string) => {
@@ -222,18 +225,16 @@ export function AppointmentDetailsDialog({
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <DialogTitle className="text-2xl">Detalhes do Agendamento</DialogTitle>
-              <DialogDescription>
-                Visualize e gerencie informações do agendamento
-              </DialogDescription>
-            </div>
+        <DialogHeader className="pr-6">
+          <div className="flex items-center gap-3">
+            <DialogTitle className="text-2xl">Detalhes do Agendamento</DialogTitle>
             <Badge variant="outline" className={statusConfig.className}>
               {statusConfig.label}
             </Badge>
           </div>
+          <DialogDescription>
+            Visualize e gerencie informações do agendamento
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -300,7 +301,7 @@ export function AppointmentDetailsDialog({
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <span className="capitalize">{formatDate(appointment.appointment_date)}</span>
+                  <span>{formatDate(appointment.appointment_date)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
@@ -489,6 +490,7 @@ export function AppointmentDetailsDialog({
         onOpenChange={setShowMessages}
         appointment={appointment}
         userType="clinic"
+        clinicId={clinicId}
       />
     )}
     </>

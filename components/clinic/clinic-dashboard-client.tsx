@@ -8,7 +8,7 @@ import type { Clinic, Professional, ProfessionalAvailability, BlockedTime } from
 import { Plus, Edit, Trash2, Calendar, Clock, LogOut, Users, MessageSquare, CalendarDays, Settings } from "lucide-react"
 import { useState, useEffect } from "react"
 import { ProfessionalFormDialog } from "./professional-form-dialog"
-import { AvailabilityFormDialog } from "./availability-form-dialog"
+import { AvailabilityFormDialog, type AvailabilitySubmitData } from "./availability-form-dialog"
 import { BlockedTimeFormDialog } from "./blocked-time-form-dialog"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -39,7 +39,6 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
   const [editingProfessional, setEditingProfessional] = useState<Professional | undefined>()
 
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false)
-  const [editingAvailability, setEditingAvailability] = useState<ProfessionalAvailability | undefined>()
 
   const [blockedTimeDialogOpen, setBlockedTimeDialogOpen] = useState(false)
   const [editingBlockedTime, setEditingBlockedTime] = useState<BlockedTime | undefined>()
@@ -174,22 +173,35 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
     }
   }
 
-  const handleAddAvailability = async (data: Partial<ProfessionalAvailability>) => {
+  const handleAddAvailability = async (data: AvailabilitySubmitData[]) => {
     if (!selectedProfessional) return
 
-    const { data: newAvailability, error } = await supabase
+    const { error: deleteError } = await supabase
       .from("professional_availability")
-      .insert({
-        professional_id: selectedProfessional.id,
-        day_of_week: data.day_of_week!,
-        start_time: data.start_time!,
-        end_time: data.end_time!,
-      })
-      .select()
-      .single()
+      .delete()
+      .eq("professional_id", selectedProfessional.id)
 
-    if (!error && newAvailability) {
-      setAvailabilities([...availabilities, newAvailability])
+    if (deleteError) return
+
+    if (data.length === 0) {
+      setAvailabilities([])
+      return
+    }
+
+    const rows = data.map((d) => ({
+      professional_id: selectedProfessional.id,
+      day_of_week: d.day_of_week,
+      start_time: d.start_time,
+      end_time: d.end_time,
+    }))
+
+    const { data: inserted, error } = await supabase
+      .from("professional_availability")
+      .insert(rows)
+      .select()
+
+    if (!error && inserted) {
+      setAvailabilities(inserted)
     }
   }
 
@@ -454,13 +466,10 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
                       <p className="text-sm text-muted-foreground">Horários de atendimento semanais</p>
                       <Button
                         size="sm"
-                        onClick={() => {
-                          setEditingAvailability(undefined)
-                          setAvailabilityDialogOpen(true)
-                        }}
+                        onClick={() => setAvailabilityDialogOpen(true)}
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        Adicionar
+                        Configurar
                       </Button>
                     </div>
 
@@ -637,7 +646,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
         open={availabilityDialogOpen}
         onOpenChange={setAvailabilityDialogOpen}
         onSubmit={handleAddAvailability}
-        availability={editingAvailability}
+        existingAvailabilities={availabilities}
       />
 
       <BlockedTimeFormDialog
@@ -662,6 +671,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
           open={appointmentDetailsOpen}
           onOpenChange={setAppointmentDetailsOpen}
           appointment={selectedAppointmentDetails}
+          clinicId={clinic.id}
           onUpdate={() => {
             loadAllAppointments()
             if (selectedProfessional) {

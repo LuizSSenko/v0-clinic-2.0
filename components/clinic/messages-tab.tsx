@@ -450,6 +450,7 @@ export function MessagesTab({ clinicId }: MessagesTabProps) {
               <MessagesChat
                 appointment={selectedConversation}
                 userType="clinic"
+                clinicId={clinicId}
               />
             </CardContent>
           </div>

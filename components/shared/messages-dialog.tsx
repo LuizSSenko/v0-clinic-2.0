@@ -5,21 +5,22 @@ import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import type { Message } from "@/lib/types"
-import { Send, Paperclip, X, FileText, Image as ImageIcon, Download } from "lucide-react"
+import { Send, Paperclip, X, FileText, Image as ImageIcon, Download, Award } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { CertificateDialog } from "../clinic/certificate-dialog"
 
 interface MessagesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   appointment: any
   userType: "patient" | "clinic"
+  clinicId?: string
 }
 
-export function MessagesDialog({ open, onOpenChange, appointment, userType }: MessagesDialogProps) {
+export function MessagesDialog({ open, onOpenChange, appointment, userType, clinicId }: MessagesDialogProps) {
   const supabase = createClient()
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -29,6 +30,7 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType }: Me
   const [currentUserId, setCurrentUserId] = useState<string>("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [certificateDialogOpen, setCertificateDialogOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -245,18 +247,21 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType }: Me
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Mensagens - {appointment.professional?.name || "Profissional"}</DialogTitle>
-          <DialogDescription>
-            {appointment.professional?.clinic?.clinic_name || "Clínica"} •{" "}
-            {new Date(appointment.appointment_date).toLocaleDateString("pt-BR")} às {appointment.start_time}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl overflow-hidden p-0 flex flex-col" style={{ height: '600px' }}>
+        <div className="px-6 pt-6 pb-4 shrink-0">
+          <DialogHeader>
+            <DialogTitle>Mensagens - {appointment.professional?.name || "Profissional"}</DialogTitle>
+            <DialogDescription>
+              {appointment.professional?.clinic?.clinic_name || "Clínica"} •{" "}
+              {new Date(appointment.appointment_date).toLocaleDateString("pt-BR")} às {appointment.start_time}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <ScrollArea ref={scrollRef} className="flex-1 pr-4">
-          <div className="space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6">
+          <div className="space-y-4 pb-4">
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <p>Nenhuma mensagem ainda. Inicie a conversa!</p>
@@ -267,7 +272,7 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType }: Me
                 const isFile = message.message_type === 'file'
                 
                 return (
-                  <div key={message.id} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+                  <div key={message.id} className={`flex min-w-0 ${isOwnMessage ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[70%] rounded-lg px-4 py-2 ${
                         isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
@@ -311,9 +316,9 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType }: Me
               })
             )}
           </div>
-        </ScrollArea>
+        </div>
 
-        <form onSubmit={handleSendMessage} className="space-y-2 pt-4 border-t">
+        <form onSubmit={handleSendMessage} className="px-6 pb-6 pt-3 border-t shrink-0 space-y-2">
           {selectedFile && (
             <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
               {getFileIcon(selectedFile.type)}
@@ -347,9 +352,22 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType }: Me
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
+              title="Anexar arquivo"
             >
               <Paperclip className="h-4 w-4" />
             </Button>
+            {userType === "clinic" && clinicId && (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => setCertificateDialogOpen(true)}
+                disabled={isLoading}
+                title="Gerar Atestado Médico"
+              >
+                <Award className="h-4 w-4" />
+              </Button>
+            )}
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
@@ -362,6 +380,18 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType }: Me
           </div>
         </form>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+    {userType === "clinic" && clinicId && (
+      <CertificateDialog
+        open={certificateDialogOpen}
+        onOpenChange={setCertificateDialogOpen}
+        patientId={appointment.patient_id}
+        clinicId={clinicId!}
+        patientName={appointment.patient?.full_name ?? "Paciente"}
+        onGenerated={(file) => setSelectedFile(file)}
+      />
+    )}
+    </>
   )
 }
