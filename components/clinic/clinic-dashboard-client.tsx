@@ -359,7 +359,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
           <TabsContent value="calendar">
             <WeeklyCalendar 
               appointments={allAppointments} 
-              professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
+              professionals={professionals.map(p => ({ id: p.id, name: p.name, specialty: p.specialty }))}
               onAppointmentClick={handleAppointmentClick}
             />
           </TabsContent>

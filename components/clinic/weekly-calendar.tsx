@@ -36,7 +36,7 @@ interface Appointment {
 
 interface WeeklyCalendarProps {
   appointments: Appointment[]
-  professionals?: Array<{ id: string; name: string }>
+  professionals?: Array<{ id: string; name: string; specialty?: string }>
   onAppointmentClick?: (appointment: Appointment) => void
 }
 
@@ -69,13 +69,20 @@ export function WeeklyCalendar({ appointments, professionals = [], onAppointment
 
   const [statusFilter, setStatusFilter] = useState<string>("active")
   const [professionalFilter, setProfessionalFilter] = useState<string>("all")
+  const [specialtyFilter, setSpecialtyFilter] = useState<string>("all")
   const [showFilters, setShowFilters] = useState(false)
+
+  // Unique specialties from registered professionals
+  const availableSpecialties = Array.from(
+    new Set(professionals.map((p) => p.specialty).filter((s): s is string => !!s))
+  ).sort()
 
   // ── Shared filter logic ───────────────────────────────────────────────
   const passesFilters = (apt: Appointment) => {
     if (statusFilter === "active" && apt.status === "cancelled") return false
     if (statusFilter !== "all" && statusFilter !== "active" && apt.status !== statusFilter) return false
     if (professionalFilter !== "all" && apt.professional_id !== professionalFilter) return false
+    if (specialtyFilter !== "all" && apt.professional?.specialty !== specialtyFilter) return false
     return true
   }
 
@@ -253,7 +260,7 @@ export function WeeklyCalendar({ appointments, professionals = [], onAppointment
         {/* Filters panel */}
         {showFilters && (
           <div className="border rounded-lg p-4 bg-muted/50 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="status-filter" className="text-sm font-medium">
                   Status do Agendamento
@@ -285,6 +292,24 @@ export function WeeklyCalendar({ appointments, professionals = [], onAppointment
                     {professionals.map((prof) => (
                       <SelectItem key={prof.id} value={prof.id}>
                         {prof.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="specialty-filter" className="text-sm font-medium">
+                  Especialidade
+                </Label>
+                <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
+                  <SelectTrigger id="specialty-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Especialidades</SelectItem>
+                    {availableSpecialties.map((spec) => (
+                      <SelectItem key={spec} value={spec}>
+                        {spec}
                       </SelectItem>
                     ))}
                   </SelectContent>
