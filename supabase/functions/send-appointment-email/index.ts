@@ -17,10 +17,34 @@ serve(async (req) => {
 
   try {
     if (!RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY secret is not configured on this project')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          reason: 'RESEND_API_KEY secret is not configured on this project',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
     const { appointmentId, action } = await req.json()
+
+    if (!appointmentId || !action) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          reason: 'appointmentId and action are required',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
 
     // Criar cliente Supabase com service role key para acessar todos os dados
     const supabaseAdmin = createClient(
@@ -44,7 +68,32 @@ serve(async (req) => {
       .single()
 
     if (appointmentError || !appointment) {
-      throw new Error('Agendamento não encontrado')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          reason: 'Agendamento não encontrado',
+          details: appointmentError?.message,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
+    if (!appointment.patient?.email) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          reason: 'Paciente sem email cadastrado',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
     // Preparar dados do email baseado na ação
@@ -68,7 +117,19 @@ serve(async (req) => {
     const data = await res.json()
 
     if (!res.ok) {
-      throw new Error(`Resend API error (${res.status}): ${data.message || JSON.stringify(data)}`)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          reason: 'Resend API error',
+          provider_status: res.status,
+          provider_error: data.message || data,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
     return new Response(
@@ -81,10 +142,14 @@ serve(async (req) => {
 
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        success: false,
+        skipped: true,
+        reason: error instanceof Error ? error.message : 'Unexpected error',
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400 
+        status: 200 
       }
     )
   }
