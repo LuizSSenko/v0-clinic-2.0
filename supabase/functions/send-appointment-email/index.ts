@@ -30,7 +30,13 @@ serve(async (req) => {
       )
     }
 
-    const { appointmentId, action } = await req.json()
+    const {
+      appointmentId,
+      action,
+      attachmentName,
+      attachmentContentBase64,
+      attachmentMimeType,
+    } = await req.json()
 
     if (!appointmentId || !action) {
       return new Response(
@@ -96,6 +102,38 @@ serve(async (req) => {
       )
     }
 
+    if (
+      action === 'certificate' &&
+      (!attachmentName || !attachmentContentBase64)
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          reason: 'certificate requires attachmentName and attachmentContentBase64',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
+    const allowedActions = ['created', 'confirmed', 'rescheduled', 'cancelled', 'certificate']
+    if (!allowedActions.includes(action)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          reason: `Ação inválida: ${action}`,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
     // Preparar dados do email baseado na ação
     const emailData = prepareEmailData(appointment, action)
 
@@ -111,6 +149,17 @@ serve(async (req) => {
         to: [appointment.patient.email],
         subject: emailData.subject,
         html: emailData.html,
+        ...(attachmentName && attachmentContentBase64
+          ? {
+              attachments: [
+                {
+                  filename: attachmentName,
+                  content: attachmentContentBase64,
+                  content_type: attachmentMimeType || 'application/pdf',
+                },
+              ],
+            }
+          : {}),
       }),
     })
 
@@ -415,8 +464,61 @@ function prepareEmailData(appointment: any, action: string) {
           </body>
         </html>
       `
+    },
+    certificate: {
+      subject: '📄 Seu atestado médico',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #2563EB; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+              .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+              .detail { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+              .label { font-weight: bold; color: #2563EB; }
+              .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1 style="margin: 0;">Atestado Médico</h1>
+              </div>
+              <div class="content">
+                <p>Olá <strong>${appointment.patient.full_name}</strong>,</p>
+                <p>Seu atestado médico está em anexo neste email.</p>
+
+                <div class="detail">
+                  <div class="label">📅 Data da consulta:</div>
+                  <div>${formattedDate}</div>
+                </div>
+
+                <div class="detail">
+                  <div class="label">🕐 Horário:</div>
+                  <div>${startTime} às ${endTime}</div>
+                </div>
+
+                <div class="detail">
+                  <div class="label">👨‍⚕️ Profissional:</div>
+                  <div>${appointment.professional.name} - ${appointment.professional.specialty}</div>
+                </div>
+
+                ${clinicInfoBlock}
+
+                <p style="margin-top: 20px;">Em caso de dúvidas, entre em contato com a clínica.</p>
+              </div>
+              <div class="footer">
+                <p>Este é um email automático, não responda.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
     }
   }
 
-  return templates[action as keyof typeof templates] || templates.created
+  return templates[action as keyof typeof templates]
 }

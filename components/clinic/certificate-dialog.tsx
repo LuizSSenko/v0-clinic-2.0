@@ -22,7 +22,7 @@ interface CertificateDialogProps {
   patientId: string
   clinicId: string
   patientName: string
-  onGenerated: (file: File) => void
+  onGenerated: (file: File, meta: { appointmentId: string; isCertificate: true }) => void
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -260,9 +260,9 @@ export function CertificateDialog({
       const fileName = `atestado-${safeName}-${apt.appointment_date}.pdf`
       const file = new File([pdfBlob], fileName, { type: "application/pdf" })
 
-      onGenerated(file)
+      onGenerated(file, { appointmentId: apt.id, isCertificate: true })
       onOpenChange(false)
-      toast.success("Atestado gerado! Confirme o envio pela mensagem.")
+      toast.success("Atestado gerado! Envie a mensagem para também enviar por email.")
     } catch (err) {
       console.error("Erro ao gerar PDF:", err)
       toast.error("Erro ao gerar o atestado.")

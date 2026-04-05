@@ -29,8 +29,53 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType, clin
   const [isLoading, setIsLoading] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string>("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [pendingCertificateAppointmentId, setPendingCertificateAppointmentId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [certificateDialogOpen, setCertificateDialogOpen] = useState(false)
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result
+        if (typeof result !== "string") {
+          reject(new Error("Falha ao converter arquivo para base64"))
+          return
+        }
+        const base64 = result.split(",")[1]
+        if (!base64) {
+          reject(new Error("Base64 inválido"))
+          return
+        }
+        resolve(base64)
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+  const sendCertificateEmail = async (appointmentId: string, file: File): Promise<boolean> => {
+    try {
+      const base64 = await fileToBase64(file)
+      const { error } = await supabase.functions.invoke("send-appointment-email", {
+        body: {
+          appointmentId,
+          action: "certificate",
+          attachmentName: file.name,
+          attachmentContentBase64: base64,
+          attachmentMimeType: file.type || "application/pdf",
+        },
+      })
+
+      if (error) {
+        console.error("Erro ao enviar atestado por email:", error)
+        return false
+      }
+      return true
+    } catch (err) {
+      console.error("Erro ao preparar envio do atestado por email:", err)
+      return false
+    }
+  }
 
   useEffect(() => {
     if (open) {
@@ -115,10 +160,12 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType, clin
     }
 
     setSelectedFile(file)
+    setPendingCertificateAppointmentId(null)
   }
 
   const removeSelectedFile = () => {
     setSelectedFile(null)
+    setPendingCertificateAppointmentId(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -204,11 +251,24 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType, clin
         .single()
 
       if (!error && insertedMessage) {
+        let certificateEmailStatus: "sent" | "failed" | "not-certificate" = "not-certificate"
+        if (selectedFile && pendingCertificateAppointmentId) {
+          const emailSent = await sendCertificateEmail(pendingCertificateAppointmentId, selectedFile)
+          certificateEmailStatus = emailSent ? "sent" : "failed"
+        }
+
         // Adicionar mensagem imediatamente ao estado local
         setMessages((prev) => [...prev, insertedMessage])
         setNewMessage("")
         removeSelectedFile()
-        toast.success(selectedFile ? 'Arquivo enviado!' : 'Mensagem enviada!')
+
+        if (certificateEmailStatus === "sent") {
+          toast.success("Mensagem enviada e atestado enviado por email!")
+        } else if (certificateEmailStatus === "failed") {
+          toast.warning("Mensagem enviada, mas o atestado não foi enviado por email.")
+        } else {
+          toast.success(selectedFile ? 'Arquivo enviado!' : 'Mensagem enviada!')
+        }
       } else {
         toast.error('Erro ao enviar mensagem')
       }
@@ -389,7 +449,10 @@ export function MessagesDialog({ open, onOpenChange, appointment, userType, clin
         patientId={appointment.patient_id}
         clinicId={clinicId!}
         patientName={appointment.patient?.full_name ?? "Paciente"}
-        onGenerated={(file) => setSelectedFile(file)}
+        onGenerated={(file, meta) => {
+          setSelectedFile(file)
+          setPendingCertificateAppointmentId(meta.appointmentId)
+        }}
       />
     )}
     </>
