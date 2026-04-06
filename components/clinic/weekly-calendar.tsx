@@ -457,7 +457,7 @@ export function WeeklyCalendar({ appointments, professionals = [], onAppointment
                       <span className="mt-auto self-start">
                         <Badge
                           variant="secondary"
-                          className="text-xs font-semibold bg-primary/15 text-primary px-2 py-0.5"
+                          className="text-sm font-bold bg-primary text-primary-foreground border border-primary shadow-sm px-2.5 py-0.5"
                         >
                           {count}
                         </Badge>

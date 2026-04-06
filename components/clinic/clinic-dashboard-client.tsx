@@ -18,6 +18,7 @@ import { WeeklyCalendar } from "./weekly-calendar"
 import { AppointmentDetailsDialog } from "./appointment-details-dialog"
 import { ClinicSettingsDialog } from "./clinic-settings-dialog"
 import { MessagesTab } from "./messages-tab"
+import { ThemeToggle } from "../shared/theme-toggle"
 
 interface ClinicDashboardClientProps {
   clinic: Clinic
@@ -313,7 +314,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
   }
 
   return (
-    <div className="min-h-svh bg-gradient-to-br from-blue-50 to-cyan-50">
+    <div className="min-h-svh bg-background">
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -322,6 +323,7 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
             <p className="text-sm text-muted-foreground">Painel da Clínica</p>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="sm"

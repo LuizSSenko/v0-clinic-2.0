@@ -12,6 +12,7 @@ import { AppointmentCard } from "./appointment-card"
 import { BookAppointmentDialog } from "./book-appointment-dialog"
 import { MessagesDialog } from "../shared/messages-dialog"
 import { SettingsDialog } from "./settings-dialog"
+import { ThemeToggle } from "../shared/theme-toggle"
 
 interface PatientDashboardClientProps {
   profile: Profile
@@ -84,7 +85,7 @@ export function PatientDashboardClient({ profile, initialAppointments }: Patient
   const cancelledAppointments = appointments.filter((apt) => apt.status === "cancelled")
 
   return (
-    <div className="min-h-svh bg-gradient-to-br from-blue-50 to-cyan-50">
+    <div className="min-h-svh bg-background">
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -93,6 +94,7 @@ export function PatientDashboardClient({ profile, initialAppointments }: Patient
             <p className="text-sm text-muted-foreground">Seus agendamentos</p>
           </div>
           <div className="flex gap-2">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => setSettingsDialogOpen(true)}>
               <Settings className="mr-2 h-4 w-4" />
               Configurações

@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Calendar, Clock, Users, MessageSquare, BookOpen } from "lucide-react"
 import Link from "next/link"
 
 export default function HomePage() {
   return (
-    <div className="min-h-svh bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
+    <div className="min-h-svh bg-background">
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -13,6 +14,7 @@ export default function HomePage() {
             <span className="text-xl font-semibold">ClinicApp</span>
           </div>
           <div className="flex gap-2">
+            <ThemeToggle />
             <Button asChild variant="ghost">
               <Link href="/tutorial">
                 <BookOpen className="mr-2 h-4 w-4" />
