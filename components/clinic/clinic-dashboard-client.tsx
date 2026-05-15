@@ -342,16 +342,25 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
 
       <div className="container mx-auto p-6">
         <Tabs defaultValue="calendar" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
-            <TabsTrigger value="calendar">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-white/80 dark:bg-muted">
+            <TabsTrigger
+              value="calendar"
+              className="border border-transparent bg-white text-foreground hover:bg-white data-[state=active]:border-gray-300 dark:bg-transparent dark:hover:bg-muted dark:data-[state=active]:border-zinc-600"
+            >
               <CalendarDays className="mr-2 h-4 w-4" />
               Calendário Geral
             </TabsTrigger>
-            <TabsTrigger value="messages">
+            <TabsTrigger
+              value="messages"
+              className="border border-transparent bg-white text-foreground hover:bg-white data-[state=active]:border-gray-300 dark:bg-transparent dark:hover:bg-muted dark:data-[state=active]:border-zinc-600"
+            >
               <MessageSquare className="mr-2 h-4 w-4" />
               Mensagens
             </TabsTrigger>
-            <TabsTrigger value="professionals">
+            <TabsTrigger
+              value="professionals"
+              className="border border-transparent bg-white text-foreground hover:bg-white data-[state=active]:border-gray-300 dark:bg-transparent dark:hover:bg-muted dark:data-[state=active]:border-zinc-600"
+            >
               <Users className="mr-2 h-4 w-4" />
               Profissionais
             </TabsTrigger>
@@ -449,15 +458,24 @@ export function ClinicDashboardClient({ clinic, initialProfessionals }: ClinicDa
               <CardContent>
                 <Tabs defaultValue="availability">
                   <TabsList className="w-full">
-                    <TabsTrigger value="availability" className="flex-1">
+                    <TabsTrigger
+                      value="availability"
+                      className="flex-1 border border-transparent data-[state=active]:border-gray-300 dark:data-[state=active]:border-zinc-600"
+                    >
                       <Calendar className="mr-2 h-4 w-4" />
                       Disponibilidade
                     </TabsTrigger>
-                    <TabsTrigger value="blocked" className="flex-1">
+                    <TabsTrigger
+                      value="blocked"
+                      className="flex-1 border border-transparent data-[state=active]:border-gray-300 dark:data-[state=active]:border-zinc-600"
+                    >
                       <Clock className="mr-2 h-4 w-4" />
                       Bloqueios
                     </TabsTrigger>
-                    <TabsTrigger value="appointments" className="flex-1">
+                    <TabsTrigger
+                      value="appointments"
+                      className="flex-1 border border-transparent data-[state=active]:border-gray-300 dark:data-[state=active]:border-zinc-600"
+                    >
                       <Users className="mr-2 h-4 w-4" />
                       Agendamentos
                     </TabsTrigger>

@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
+import { Footer } from "@/components/shared/footer"
 import { Calendar, Clock, Users, MessageSquare, BookOpen } from "lucide-react"
 import Link from "next/link"
 
 export default function HomePage() {
   return (
-    <div className="min-h-svh bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -32,7 +33,7 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
+      <section className="container mx-auto px-4 py-20 text-center flex-1">
         <h1 className="text-5xl font-bold tracking-tight text-balance mb-6">Agendamento Clínico Simplificado</h1>
         <p className="text-xl text-muted-foreground text-balance mb-8 max-w-2xl mx-auto">
           Conecte pacientes e clínicas de forma eficiente. Gerencie consultas, profissionais e comunicação em um só
@@ -97,6 +98,9 @@ export default function HomePage() {
             </p>
           </div>
         </div>
+
+      {/* Footer */}
+      <Footer />
       </section>
     </div>
   )
